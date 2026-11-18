@@ -16,6 +16,7 @@ import {
   PlusCircle,
   Boxes,
   RotateCcw,
+  Truck,
   Users,
   TrendingUp,
   Receipt,
@@ -40,6 +41,7 @@ import {
   ShoppingCart,
   Headphones,
   Layers,
+  FileText,
 } from 'lucide-react';
 
 /* ==========================================================================
@@ -73,7 +75,7 @@ export const customerNavGroups = [
       { name: 'My Orders', path: '/customer/orders', icon: Package },
       { name: 'Daily Purchase Report', path: '/customer/daily-purchases', icon: Receipt },
       { name: 'Track Orders', path: '/customer/orders?tab=tracking', icon: Tag },
-      { name: 'Returns', path: '/customer/orders?tab=returns', icon: RotateCcw },
+      { name: 'Returns & Cancellations', path: '/customer/returns', icon: RotateCcw, highlight: true },
     ],
   },
   {
@@ -158,12 +160,16 @@ export const vendorNavGroups = [
     group: 'ORDER MANAGEMENT',
     items: [
       { name: 'Orders', path: '/vendor/orders', icon: ShoppingBag },
-      { name: 'Returns & Cancellations', path: '/vendor/orders?tab=returns', icon: RotateCcw },
+      { name: 'Returns & Cancellations', path: '/vendor/returns', icon: RotateCcw, highlight: true },
+      { name: 'Shipping & Delivery', path: '/vendor/shipping', icon: Truck, highlight: true },
+      { name: 'Pickup Locations', path: '/vendor/pickup-addresses', icon: MapPin },
     ],
   },
   {
     group: 'FINANCE',
     items: [
+      { name: 'Tax Invoices', path: '/vendor/invoices', icon: FileText, highlight: true },
+      { name: 'Subscription Invoices', path: '/vendor/subscription/history', icon: Receipt, highlight: true },
       { name: 'Daily Sales Report', path: '/vendor/daily-sales', icon: BarChart3, highlight: true },
       { name: 'Sales & Earnings', path: '/vendor/earnings', icon: TrendingUp },
       { name: 'Earnings & Ledger', path: '/vendor/finance', icon: TrendingUp },
@@ -180,6 +186,7 @@ export const vendorNavGroups = [
     group: 'GROWTH',
     items: [
       { name: 'Subscription', path: '/vendor/subscription', icon: CreditCard },
+      { name: 'Subscription Invoices', path: '/vendor/subscription/history', icon: Receipt },
       { name: 'Refer a Vendor', path: '/vendor/network', icon: Network, highlight: true },
       { name: 'Store QR Codes', path: '/vendor/qr', icon: Tag },
     ],
@@ -239,14 +246,19 @@ export const superAdminNavGroups = [
       { name: 'Products Catalog', path: '/super-admin/products', icon: Package },
       { name: 'Product Approvals', path: '/super-admin/products/review', icon: ShieldCheck },
       { name: 'Fulfillment Dashboard', path: '/super-admin/fulfillment', icon: Boxes },
+      { name: 'Shiprocket Logistics Hub', path: '/super-admin/shipping', icon: Truck, highlight: true },
+      { name: 'Returns, Refunds & Policies', path: '/super-admin/returns', icon: RotateCcw, highlight: true },
       { name: 'Subscription Monitoring Overview', path: '/super-admin/subscriptions', icon: Layers },
       { name: 'Vendor Subscription Management', path: '/super-admin/vendor-subscriptions', icon: CreditCard },
+      { name: 'Vendor Subscription Invoices', path: '/super-admin/subscription-invoices', icon: Receipt, highlight: true },
       { name: 'Customer Subscription Plans', path: '/super-admin/subscription-plans', icon: Crown },
     ],
   },
   {
     group: 'FINANCE & SETTLEMENTS',
     items: [
+      { name: 'Invoices & GST Billing', path: '/super-admin/invoices', icon: FileText, highlight: true },
+      { name: 'Fair Coins Management', path: '/super-admin/fair-coins', icon: Coins, highlight: true },
       { name: 'Sales Report', path: '/super-admin/sales-report', icon: BarChart3 },
       { name: 'Financial Ledger', path: '/super-admin/ledger', icon: Receipt },
       { name: 'Daily Sales Report', path: '/super-admin/payments', icon: BarChart3, highlight: true },

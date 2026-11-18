@@ -48,10 +48,16 @@ export const Header = () => {
 
   // Fetch cart & wishlist count
   const fetchCounts = async () => {
+    if (!isAuthenticated) {
+      setCartCount(0);
+      setWishlistCount(0);
+      return;
+    }
+
     try {
       const [cartRes, wishRes] = await Promise.allSettled([
         api.get('/cart'),
-        isAuthenticated ? api.get('/wishlist') : Promise.resolve({ data: { data: { wishlist: { products: [] } } } }),
+        api.get('/wishlist'),
       ]);
 
       if (cartRes.status === 'fulfilled' && cartRes.value?.data?.data?.cart?.items) {

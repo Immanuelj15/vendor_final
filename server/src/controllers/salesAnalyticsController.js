@@ -109,9 +109,9 @@ export function allocateLineItem(order, item) {
     ? item.discountSnapshot
     : moneyUtils.roundMoney((order.discountTotal || order.discount || 0) * ratio);
 
-  const tax = item.taxSnapshot != null && item.taxSnapshot > 0
-    ? item.taxSnapshot
-    : moneyUtils.roundMoney((order.taxTotal || order.tax || 0) * ratio);
+  const tax = (order.taxTotal != null && order.taxTotal > 0) || (order.tax != null && order.tax > 0)
+    ? moneyUtils.roundMoney((order.taxTotal || order.tax || 0) * ratio)
+    : 0;
 
   const shipping = moneyUtils.roundMoney((order.shippingTotal || order.shippingFee || 0) * ratio);
   const finalAmount = moneyUtils.roundMoney(lineTotal - discount + tax + shipping);

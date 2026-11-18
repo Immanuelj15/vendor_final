@@ -134,7 +134,7 @@ export const paymentService = {
     };
   },
 
-  async verifyPaymentSignature({ razorpayOrderId, razorpayPaymentId, razorpaySignature }) {
+  async verifyPaymentSignature({ razorpayOrderId, razorpayPaymentId, razorpaySignature, requestingUser, isInternalWebhook = false }) {
     const isReplicaSet = Boolean(
       mongoose.connection?.client?.topology?.description?.setName ||
       ['ReplicaSetWithPrimary', 'Sharded'].includes(mongoose.connection?.client?.topology?.description?.type)
@@ -163,6 +163,23 @@ export const paymentService = {
         throw new ApiError(404, 'Payment record not found for this Razorpay order ID', ERROR_CODES.NOT_FOUND);
       }
 
+      // Enforce Payment Ownership: Customer cannot verify payment for another user's order
+      if (requestingUser && requestingUser.role !== 'SUPER_ADMIN') {
+        const reqUserId = requestingUser._id ? requestingUser._id.toString() : String(requestingUser);
+        const payUserId = payment.userId ? payment.userId.toString() : '';
+        if (payUserId && reqUserId !== payUserId) {
+          throw new ApiError(403, 'Unauthorized to verify payment for this order', ERROR_CODES.FORBIDDEN);
+        }
+      }
+
+      // Prohibit external users bypassing signature verification with 'webhook_verified' magic string (SEC-01)
+      if (!isInternalWebhook && razorpaySignature === 'webhook_verified') {
+        payment.status = 'FAILED';
+        payment.failureReason = 'Unauthorized signature bypass attempt';
+        await payment.save(sessionOption());
+        throw new ApiError(400, 'Invalid payment signature', ERROR_CODES.BAD_REQUEST);
+      }
+
       if (payment.status === 'CAPTURED' || payment.status === 'SUCCESS') {
         if (inTransaction && session) {
           await session.commitTransaction();
@@ -177,7 +194,14 @@ export const paymentService = {
         env.RAZORPAY_KEY_ID === 'rzp_test_demo'
       );
 
-      if (razorpaySignature !== 'webhook_verified' && !isMockDev) {
+      if (!isInternalWebhook && !isMockDev) {
+        if (!razorpaySignature) {
+          payment.status = 'FAILED';
+          payment.failureReason = 'Missing payment signature';
+          await payment.save(sessionOption());
+          throw new ApiError(400, 'Payment signature is required', ERROR_CODES.BAD_REQUEST);
+        }
+
         const generatedSignature = crypto
           .createHmac('sha256', env.RAZORPAY_KEY_SECRET)
           .update(`${payment.razorpayOrderId}|${razorpayPaymentId}`)
@@ -291,7 +315,7 @@ export const paymentService = {
         await notificationService.createNotification({
           userId: payment.userId,
           title: 'Payment Successful',
-          message: `Your payment of ₹${(payment.amount / 100).toFixed(2)} for Order #${order.orderNumber} was processed successfully.`,
+          message: `Your payment of ₹${Number(payment.amount).toFixed(2)} for Order #${order.orderNumber} was processed successfully.`,
           type: 'PAYMENT_SUCCESS',
           link: `/account/orders/${order._id}`
         }, { dedupeKey: `${payment._id}:PAYMENT_SUCCESS` });
@@ -307,6 +331,10 @@ export const paymentService = {
         const { emailService } = await import('./emailService.js');
         await emailService.sendPaymentReceipt(payment, order);
         await emailService.sendOrderConfirmation(order);
+        // Automatically generate official BAAPOO MART tax invoices
+        import('./invoiceService.js')
+          .then(({ invoiceService }) => invoiceService.generateInvoicesForOrder(order._id))
+          .catch((invErr) => console.error('[InvoiceService] Automatic invoice generation notice:', invErr.message));
       } catch (err) {
         console.error('Order payment success notifications/emails failed:', err);
       }
@@ -446,16 +474,22 @@ export const paymentService = {
 
       const { financeService } = await import('./financeService.js');
       await financeService.allocateOrderFinances(order._id, inTransaction ? session : null);
+      try {
+        const { marketplaceCommissionService } = await import('./marketplaceCommissionService.js');
+        await marketplaceCommissionService.processPaidOrder(order._id, payment.transactionId, payment.verifiedAt, inTransaction ? session : null);
+      } catch (mErr) {
+        console.error('[MarketplaceCommission] Error creating 5% commission and 7-day hold payouts:', mErr);
+      }
 
       const { fulfillmentService } = await import('./fulfillmentService.js');
       await fulfillmentService.createFulfillmentForOrder(order._id);
 
       if (order.fairCoinsUsed > 0) {
-        await fairCoinService.debitCoins({
+        await fairCoinService.commitRedemption({
           userId: order.userId,
           amount: order.fairCoinsUsed,
-          type: 'DEBIT',
-          source: 'ORDER_CHECKOUT_REDEMPTION',
+          orderId: order._id,
+          orderNumber: order.orderNumber,
           description: `Redeemed ${order.fairCoinsUsed} Fair Coins for order discount`,
         });
       }
@@ -477,7 +511,7 @@ export const paymentService = {
         await cart.save(sessionOption());
       }
 
-      await fairCoinService.processPurchaseReward(order.userId, order.orderNumber, order.total);
+      await fairCoinService.processPurchaseReward(order.userId, order._id, order.orderNumber, order.items);
       await mlmRewardService.processPurchaseCommission(order.userId, order._id, order.total);
 
       if (inTransaction && session) {
@@ -548,10 +582,23 @@ export const paymentService = {
         const razorpayPaymentId = paymentEntity.id;
         const razorpaySignature = 'webhook_verified';
 
+        // Check amount consistency between gateway event and recorded payment order
+        const existingPayment = await Payment.findOne({ razorpayOrderId });
+        if (existingPayment) {
+          const expectedPaise = Math.round(Number(existingPayment.amount) * 100);
+          if (paymentEntity.amount && Number(paymentEntity.amount) !== expectedPaise) {
+            existingPayment.status = 'FAILED';
+            existingPayment.failureReason = `Captured amount mismatch: expected ${expectedPaise} paise, received ${paymentEntity.amount} paise`;
+            await existingPayment.save();
+            throw new ApiError(400, 'Payment amount mismatch between gateway and order', ERROR_CODES.BAD_REQUEST);
+          }
+        }
+
         await this.verifyPaymentSignature({
           razorpayOrderId,
           razorpayPaymentId,
           razorpaySignature,
+          isInternalWebhook: true,
         });
       }
 
@@ -566,15 +613,27 @@ export const paymentService = {
           payment.failureReason = failureReason;
           await payment.save();
 
-          await Order.findByIdAndUpdate(payment.orderId, {
+          const order = await Order.findByIdAndUpdate(payment.orderId, {
             paymentStatus: 'FAILED',
           });
+
+          // Release any reserved Fair Coins
+          if (order && order.fairCoinsUsed > 0) {
+            try {
+              await fairCoinService.releaseReservedCoins({
+                userId: order.userId,
+                amount: order.fairCoinsUsed,
+              });
+            } catch (releaseErr) {
+              console.error('Failed to release reserved coins on payment failure webhook:', releaseErr);
+            }
+          }
 
           try {
             await notificationService.createNotification({
               userId: payment.userId,
               title: 'Payment Failed',
-              message: `Your payment of ₹${(payment.amount / 100).toFixed(2)} failed. Reason: ${failureReason}`,
+              message: `Your payment of ₹${Number(payment.amount).toFixed(2)} failed. Reason: ${failureReason}`,
               type: 'PAYMENT_FAILED',
               link: payment.orderId ? `/account/orders/${payment.orderId}` : '/account/wallet'
             }, { dedupeKey: `${payment._id}:PAYMENT_FAILED` });

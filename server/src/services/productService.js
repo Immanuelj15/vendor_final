@@ -175,26 +175,49 @@ export const productService = {
   },
 
   async createProduct(vendorId, productData) {
-    // Validate up to 5 images
-    if (productData.images !== undefined) {
-      productData.images = this.validateProductImages(productData.images);
+    const price = Number(productData.price);
+    if (isNaN(price) || price <= 0) {
+      throw new ApiError(400, 'Product price must be greater than zero', ERROR_CODES.BAD_REQUEST);
     }
 
-    // Validate category exists and is active
-    if (!productData.categoryId) {
-      throw new ApiError(400, 'Product category is required', ERROR_CODES.BAD_REQUEST);
-    }
-    const categoryDoc = await Category.findById(productData.categoryId);
-    if (!categoryDoc) {
-      throw new ApiError(400, 'Selected product category does not exist', ERROR_CODES.BAD_REQUEST);
-    }
-    if (categoryDoc.status === 'INACTIVE' || categoryDoc.isActive === false) {
-      throw new ApiError(400, 'The selected category is inactive. Please select an active category.', ERROR_CODES.BAD_REQUEST);
-    }
-
-    // Check if MRP >= Selling Price
-    if (productData.price > productData.mrp) {
+    const mrp = productData.mrp !== undefined ? Number(productData.mrp) : price;
+    if (isNaN(mrp) || mrp < price) {
       throw new ApiError(400, 'Selling price cannot be greater than MRP', ERROR_CODES.BAD_REQUEST);
+    }
+
+    const stock = productData.stock !== undefined ? parseInt(productData.stock, 10) : 0;
+    if (isNaN(stock) || stock < 0) {
+      throw new ApiError(400, 'Product stock must be a non-negative integer', ERROR_CODES.BAD_REQUEST);
+    }
+
+    // Validate up to 5 images
+    let validatedImages = [];
+    if (productData.images !== undefined) {
+      validatedImages = this.validateProductImages(productData.images);
+    }
+
+    // Validate category exists and is active, or fallback to first available active category
+    let categoryDoc = null;
+    if (productData.categoryId) {
+      categoryDoc = await Category.findById(productData.categoryId);
+      if (!categoryDoc) {
+        throw new ApiError(400, 'Selected product category does not exist', ERROR_CODES.BAD_REQUEST);
+      }
+      if (categoryDoc.status === 'INACTIVE' || categoryDoc.isActive === false) {
+        throw new ApiError(400, 'The selected category is inactive. Please select an active category.', ERROR_CODES.BAD_REQUEST);
+      }
+    } else {
+      categoryDoc = await Category.findOne({ isActive: true, status: { $ne: 'INACTIVE' } });
+      if (!categoryDoc) {
+        categoryDoc = await Category.create({
+          name: 'General',
+          slug: 'general',
+          description: 'General marketplace category',
+          isActive: true,
+          status: 'ACTIVE',
+        });
+      }
+      productData.categoryId = categoryDoc._id;
     }
 
     // Enforce subscription product listing allowance if configured
@@ -221,7 +244,7 @@ export const productService = {
       console.warn('[VendorSubscription] Product limit check non-fatal error:', subCheckErr.message);
     }
 
-    const slug = productData.name
+    const slug = (productData.name || 'product')
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/(^-|-$)+/g, '');
@@ -233,11 +256,28 @@ export const productService = {
     // If they explicitly pass DRAFT, keep it as DRAFT
     const finalStatus = productData.status === 'DRAFT' ? 'DRAFT' : initialStatus;
 
+    // Strict allow-list of fields to prevent mass-assignment (BE-08)
     const product = await Product.create({
-      ...productData,
+      name: productData.name,
+      description: productData.description || '',
+      price,
+      mrp,
+      discountPrice: productData.discountPrice ? Number(productData.discountPrice) : 0,
+      stock,
+      categoryId: productData.categoryId,
+      brandId: productData.brandId || undefined,
+      sku: productData.sku || undefined,
+      images: validatedImages,
+      tags: Array.isArray(productData.tags) ? productData.tags : [],
+      attributes: typeof productData.attributes === 'object' && productData.attributes !== null ? productData.attributes : {},
       vendorId,
+      sourceType: 'VENDOR',
       slug: `${slug}-${Math.floor(1000 + Math.random() * 9000)}`,
       status: finalStatus,
+      rating: 0,
+      reviewCount: 0,
+      isFeatured: false,
+      soldCount: 0,
       isDeleted: false,
     });
 
@@ -256,11 +296,31 @@ export const productService = {
 
     // Validate up to 5 images
     if (productData.images !== undefined) {
-      productData.images = this.validateProductImages(productData.images);
+      product.images = this.validateProductImages(productData.images);
     }
 
-    if (productData.price && productData.mrp && productData.price > productData.mrp) {
-      throw new ApiError(400, 'Selling price cannot be greater than MRP', ERROR_CODES.BAD_REQUEST);
+    if (productData.price !== undefined) {
+      const price = Number(productData.price);
+      if (isNaN(price) || price <= 0) {
+        throw new ApiError(400, 'Product price must be greater than zero', ERROR_CODES.BAD_REQUEST);
+      }
+      product.price = price;
+    }
+
+    if (productData.mrp !== undefined) {
+      const mrp = Number(productData.mrp);
+      if (isNaN(mrp) || mrp < product.price) {
+        throw new ApiError(400, 'Selling price cannot be greater than MRP', ERROR_CODES.BAD_REQUEST);
+      }
+      product.mrp = mrp;
+    }
+
+    if (productData.stock !== undefined) {
+      const stock = parseInt(productData.stock, 10);
+      if (isNaN(stock) || stock < 0) {
+        throw new ApiError(400, 'Product stock must be a non-negative integer', ERROR_CODES.BAD_REQUEST);
+      }
+      product.stock = stock;
     }
 
     if (productData.categoryId) {
@@ -271,13 +331,16 @@ export const productService = {
       if (categoryDoc.status === 'INACTIVE' || categoryDoc.isActive === false) {
         throw new ApiError(400, 'The selected category is inactive. Please select an active category.', ERROR_CODES.BAD_REQUEST);
       }
+      product.categoryId = productData.categoryId;
     }
 
-    // Do not allow status change through regular update endpoint
-    delete productData.status;
-    delete productData.vendorId;
+    if (productData.name) product.name = productData.name;
+    if (productData.description !== undefined) product.description = productData.description;
+    if (productData.sku !== undefined) product.sku = productData.sku;
+    if (productData.discountPrice !== undefined) product.discountPrice = Number(productData.discountPrice);
+    if (Array.isArray(productData.tags)) product.tags = productData.tags;
+    if (typeof productData.attributes === 'object' && productData.attributes !== null) product.attributes = productData.attributes;
 
-    Object.assign(product, productData);
     await product.save();
     return product;
   },

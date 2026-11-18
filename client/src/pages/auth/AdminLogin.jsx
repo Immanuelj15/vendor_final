@@ -75,7 +75,7 @@ export const AdminLogin = () => {
           <div className="inline-block px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-900 text-[10px] font-black uppercase tracking-wider mb-2">
             Operations & Approvals
           </div>
-          <h2 className="text-2xl font-black text-slate-900 tracking-tight">FairKart Admin Portal</h2>
+          <h2 className="text-2xl font-black text-slate-900 tracking-tight">Baapoo Mart Admin Portal</h2>
           <p className="text-xs text-slate-500 mt-1">Vendor/customer approvals, operations, orders & payouts</p>
         </div>
 
@@ -100,7 +100,7 @@ export const AdminLogin = () => {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@fairkart.dev"
+                placeholder="admin@baapoomart.com"
                 className="w-full bg-slate-50 text-xs text-slate-800 rounded-xl px-4 py-2.5 pl-10 border border-slate-200 focus:outline-none focus:border-blue-500 focus:bg-white transition-colors"
               />
               <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />

@@ -8,8 +8,8 @@ export const financeService = {
   async allocateOrderFinances(orderId, sessionArg = null) {
     await platformCommissionService.recordOrderCommission(orderId, sessionArg);
     const order = await Order.findById(orderId);
-    if (order && order.orderStatus === 'DELIVERED') {
-      await platformCommissionService.onOrderDelivered(orderId, sessionArg);
+    if (order && (order.paymentStatus === 'PAID' || order.orderStatus === 'DELIVERED')) {
+      await platformCommissionService.creditOrderEarningsImmediately(orderId, sessionArg);
     }
   },
 };

@@ -136,7 +136,7 @@ export const SuperAdminLogin = () => {
             Platform Security Tier 1
           </div>
           <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-            {step === 'MFA_CHALLENGE' ? 'Two-Factor Challenge' : 'FairKart Platform Administration'}
+            {step === 'MFA_CHALLENGE' ? 'Two-Factor Challenge' : 'Baapoo Mart Platform Administration'}
           </h2>
           <p className="text-xs text-slate-500 mt-1">
             {step === 'MFA_CHALLENGE'
@@ -175,7 +175,7 @@ export const SuperAdminLogin = () => {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="admin@fairkart.dev"
+                    placeholder="admin@baapoomart.com"
                     className="w-full bg-slate-50 text-xs text-slate-800 rounded-xl px-4 py-2.5 pl-10 border border-slate-200 focus:outline-none focus:border-blue-600 focus:bg-white transition-colors"
                   />
                   <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
@@ -228,12 +228,12 @@ export const SuperAdminLogin = () => {
                 <button
                   type="button"
                   onClick={() => {
-                    setEmail('admin@fairkart.dev');
+                    setEmail('admin@baapoomart.com');
                     setPassword('Password@123');
                   }}
                   className="text-[11px] font-bold text-slate-900 hover:text-blue-700 hover:underline"
                 >
-                  Fill Demo (admin@fairkart.dev)
+                  Fill Demo (admin@baapoomart.com)
                 </button>
               </div>
             </motion.form>

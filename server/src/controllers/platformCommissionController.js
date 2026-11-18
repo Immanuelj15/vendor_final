@@ -67,18 +67,19 @@ export const getAdminCommissionOverview = asyncWrapper(async (req, res) => {
       if (isPaid) {
         totalVendorProductSales = moneyUtils.addMoney(totalVendorProductSales, itemAmount);
 
-        if (isDelivered) {
-          // Delivered: Commission is EARNED and Vendor Share is ELIGIBLE for settlement
+        const isSettled = item.settlementStatus === 'PAID';
+        if (isSettled || isDelivered) {
+          // Delivered or Immediately Distributed: Commission is EARNED and recognized revenue for platform
           totalCommissionEarned = moneyUtils.addMoney(totalCommissionEarned, platformCommission);
           commissionEligibleForSettlement = moneyUtils.addMoney(commissionEligibleForSettlement, platformCommission);
 
-          if (item.settlementStatus === 'PAID') {
+          if (isSettled) {
             totalVendorPayoutsCompleted = moneyUtils.addMoney(totalVendorPayoutsCompleted, vendorShare);
           } else {
             totalVendorPayables = moneyUtils.addMoney(totalVendorPayables, vendorShare);
           }
         } else {
-          // Paid but not yet delivered: Pending delivery
+          // Paid but not yet delivered / settled: Pending delivery
           commissionPendingDelivery = moneyUtils.addMoney(commissionPendingDelivery, platformCommission);
           pendingVendorProceeds = moneyUtils.addMoney(pendingVendorProceeds, vendorShare);
         }
@@ -90,9 +91,15 @@ export const getAdminCommissionOverview = asyncWrapper(async (req, res) => {
   const settlements = await VendorSettlement.find({ createdAt: { $gte: start, $lte: end } }).lean();
   let amountEligibleForPayout = 0;
   let failedOrHeldPayouts = 0;
+  let totalSettlementPayouts = 0;
+  let totalSettlementCommission = 0;
   const now = new Date();
 
   settlements.forEach((s) => {
+    if (s.status === 'PAID' || s.settlementStatus === 'PAID') {
+      totalSettlementPayouts = moneyUtils.addMoney(totalSettlementPayouts, s.netPayable || s.vendorPayoutAmount || 0);
+      totalSettlementCommission = moneyUtils.addMoney(totalSettlementCommission, s.platformCommission || 0);
+    }
     if (s.status === 'ELIGIBLE' && s.eligibleAt && new Date(s.eligibleAt) <= now) {
       amountEligibleForPayout = moneyUtils.addMoney(amountEligibleForPayout, s.netPayable || s.vendorPayoutAmount || 0);
     }
@@ -101,6 +108,31 @@ export const getAdminCommissionOverview = asyncWrapper(async (req, res) => {
     }
   });
 
+  if (totalSettlementPayouts > totalVendorPayoutsCompleted) {
+    totalVendorPayoutsCompleted = totalSettlementPayouts;
+  }
+  if (totalSettlementCommission > totalCommissionEarned) {
+    totalCommissionEarned = totalSettlementCommission;
+  }
+
+  const metricsPayload = {
+    totalVerifiedCustomerPayments,
+    totalEligibleProductSales: totalVendorProductSales,
+    totalVendorProductSales,
+    totalPlatformCommissionEarned: totalCommissionEarned,
+    totalCommissionEarned,
+    commissionPendingDelivery,
+    commissionEligibleForSettlement,
+    pendingVendorProceeds,
+    amountEligibleForPayout,
+    totalVendorPayables,
+    totalVendorPayoutsCompleted,
+    completedVendorPayouts: totalVendorPayoutsCompleted,
+    failedOrHeldPayouts,
+    totalRefundsReversals,
+    effectiveRate: 5,
+  };
+
   return res.status(200).json(
     new ApiResponse(
       200,
@@ -108,23 +140,8 @@ export const getAdminCommissionOverview = asyncWrapper(async (req, res) => {
         range,
         startDate: start,
         endDate: end,
-        metrics: {
-          totalVerifiedCustomerPayments,
-          totalEligibleProductSales: totalVendorProductSales,
-          totalVendorProductSales,
-          totalPlatformCommissionEarned: totalCommissionEarned,
-          totalCommissionEarned,
-          commissionPendingDelivery,
-          commissionEligibleForSettlement,
-          pendingVendorProceeds,
-          amountEligibleForPayout,
-          totalVendorPayables,
-          totalVendorPayoutsCompleted,
-          completedVendorPayouts: totalVendorPayoutsCompleted,
-          failedOrHeldPayouts,
-          totalRefundsReversals,
-          effectiveRate: 5,
-        },
+        ...metricsPayload,
+        metrics: metricsPayload,
       },
       'Commission overview metrics retrieved successfully'
     )
@@ -195,7 +212,7 @@ export const getAdminCommissionTransactions = asyncWrapper(async (req, res) => {
       }
 
       const itemEligible = item.lineTotal || (item.unitPrice || 0) * (item.quantity || 1);
-      const commissionRate = typeof item.commissionRate === 'number' ? item.commissionRate : ((item.quantity || 1) * 5);
+      const commissionRate = 5;
       const platformCommission = typeof item.platformCommission === 'number'
         ? item.platformCommission
         : platformCommissionService.calculate(itemEligible, item.quantity || 1).platformCommission;
@@ -323,8 +340,9 @@ export const getAdminVendorCommissionsSummary = asyncWrapper(async (req, res) =>
         vRec.platformCommissionTotal = moneyUtils.addMoney(vRec.platformCommissionTotal, platformCommission);
         vRec.vendorEarningsTotal = moneyUtils.addMoney(vRec.vendorEarningsTotal, vendorShare);
 
-        if (isDelivered) {
-          if (item.settlementStatus === 'PAID') {
+        const isSettled = item.settlementStatus === 'PAID';
+        if (isSettled || isDelivered) {
+          if (isSettled) {
             vRec.paidOutTotal = moneyUtils.addMoney(vRec.paidOutTotal, vendorShare);
           } else {
             vRec.eligiblePayable = moneyUtils.addMoney(vRec.eligiblePayable, vendorShare);

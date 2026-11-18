@@ -40,7 +40,7 @@ export const AdminLayout = () => {
       {/* 1. Left Sidebar with Permission Filtering */}
       <PortalSidebar
         portal="admin"
-        title="FairKart Admin"
+        title="Baapoo Mart Admin"
         subtitle="Operations & Management"
         navGroups={adminNavGroups}
         isCollapsed={isCollapsed}

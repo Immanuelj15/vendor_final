@@ -14,6 +14,7 @@ import { VendorLedger } from '../models/VendorLedger.js';
 import { Settings } from '../models/Settings.js';
 import { moneyUtils } from '../utils/moneyUtils.js';
 import { logAdminAction } from './auditLogService.js';
+import { Territory } from '../models/Territory.js';
 
 export const vendorService = {
   async registerVendor(userId, vendorData) {
@@ -159,19 +160,63 @@ export const vendorService = {
     const vendor = await Vendor.findById(vendorId);
     if (!vendor) throw new ApiError(404, 'Vendor not found', ERROR_CODES.NOT_FOUND);
 
+    const now = new Date();
+    const { VendorSubscription } = await import('../models/VendorSubscription.js');
+    const { Subscription } = await import('../models/Subscription.js');
+
+    const activeSubscription = await VendorSubscription.findOne({
+      vendorId: vendor._id,
+      subscriptionStatus: { $in: ['Active', 'ACTIVE'] },
+      expiryDate: { $gt: now },
+    }).populate('planId');
+
+    const activeLegacySub = !activeSubscription ? await Subscription.findOne({
+      entityType: 'VENDOR',
+      entityId: vendor._id,
+      status: 'ACTIVE',
+      endDate: { $gt: now },
+    }).populate('planId') : null;
+
+    const hasActiveSub = Boolean(activeSubscription || activeLegacySub);
     const orders = await VendorOrder.find({ vendorId }).sort({ createdAt: -1 });
+
+    // Auto-heal vendor merchant status if subscribed or vendor has balance/orders
+    if ((hasActiveSub || (vendor.balance && vendor.balance > 0) || orders.length > 0) && (!vendor.isPaid || vendor.paymentStatus !== 'PAID' || vendor.status !== 'APPROVED')) {
+      vendor.isPaid = true;
+      vendor.paymentStatus = 'PAID';
+      vendor.status = 'APPROVED';
+      if (activeSubscription) {
+        vendor.subscriptionId = activeSubscription._id;
+        vendor.subscriptionPlan = activeSubscription.planNameSnapshot || activeSubscription.planId?.name || '';
+        vendor.subscriptionExpiry = activeSubscription.expiryDate;
+      } else if (activeLegacySub) {
+        vendor.subscriptionPlan = activeLegacySub.planId?.name || '';
+        vendor.subscriptionExpiry = activeLegacySub.endDate;
+      }
+      await vendor.save();
+    }
+
     const productsCount = await Product.countDocuments({ vendorId });
     const withdrawals = await VendorWithdrawal.find({ vendorId }).sort({ createdAt: -1 });
 
+    let computedSales = 0;
+    let computedEarnings = 0;
+    orders.forEach((o) => {
+      computedSales += (o.itemsSubtotal || o.grandTotal || o.subtotal || 0);
+      computedEarnings += (o.vendorEarning || 0);
+    });
+
     const totalOrders = orders.length;
-    const totalEarnings = vendor.balance;
+    const totalSales = (typeof vendor.totalSales === 'number' && vendor.totalSales > 0) ? vendor.totalSales : computedSales;
+    const totalEarnings = (typeof vendor.balance === 'number' && vendor.balance > 0) ? vendor.balance : computedEarnings;
 
     return {
       vendor,
+      activeSubscription: activeSubscription || activeLegacySub,
       stats: {
-        totalSales: vendor.totalSales,
+        totalSales,
         totalEarnings,
-        pendingBalance: vendor.pendingBalance,
+        pendingBalance: vendor.pendingBalance || 0,
         totalOrders,
         productsCount,
       },
@@ -184,8 +229,12 @@ export const vendorService = {
     const vendor = await Vendor.findById(vendorId);
     if (!vendor) throw new ApiError(404, 'Vendor not found', ERROR_CODES.NOT_FOUND);
 
-    if (typeof amount !== 'number' || amount <= 0) {
-      throw new ApiError(400, 'Withdrawal amount must be greater than zero', ERROR_CODES.BAD_REQUEST);
+    if (vendor.status !== 'APPROVED') {
+      throw new ApiError(403, 'Only approved vendors can request withdrawals', ERROR_CODES.FORBIDDEN);
+    }
+
+    if (typeof amount !== 'number' || isNaN(amount) || !isFinite(amount) || amount <= 0 || Number(amount.toFixed(2)) !== amount) {
+      throw new ApiError(400, 'Withdrawal amount must be a valid positive number with at most 2 decimal places', ERROR_CODES.BAD_REQUEST);
     }
 
     const roundedAmount = moneyUtils.roundMoney(amount);
@@ -273,51 +322,46 @@ export const vendorService = {
     const vendor = await Vendor.findOne({ userId });
     if (!vendor) throw new ApiError(404, 'Vendor not found', ERROR_CODES.NOT_FOUND);
 
-    if (!vendor.isPaid || vendor.paymentStatus !== 'PAID') {
-      throw new ApiError(403, 'Vendor platform registration payment required (₹1,999). Please complete payment to unlock product management and options.', ERROR_CODES.FORBIDDEN);
-    }
+    const now = new Date();
+    const { VendorSubscription } = await import('../models/VendorSubscription.js');
+    const { Subscription } = await import('../models/Subscription.js');
 
-    if (vendor.status !== 'APPROVED') {
-      throw new ApiError(403, 'Vendor account is not approved for product management', ERROR_CODES.FORBIDDEN);
-    }
+    const activeVendorSub = await VendorSubscription.findOne({
+      vendorId: vendor._id,
+      subscriptionStatus: { $in: ['Active', 'ACTIVE'] },
+      expiryDate: { $gt: now },
+    });
 
-    let currentSub = await vendorSubscriptionService.getCurrentSubscription(vendor._id);
-    if (!currentSub || currentSub.status !== 'ACTIVE' || currentSub.endDate < new Date()) {
-      const { Subscription } = await import('../models/Subscription.js');
-      const { SubscriptionPlan } = await import('../models/SubscriptionPlan.js');
+    const activeLegacySub = !activeVendorSub ? await Subscription.findOne({
+      entityType: 'VENDOR',
+      entityId: vendor._id,
+      status: 'ACTIVE',
+      endDate: { $gt: now },
+    }) : null;
 
-      let vendorPlan = await SubscriptionPlan.findOne({ applicableEntityType: 'VENDOR', isActive: true });
-      if (!vendorPlan) {
-        vendorPlan = await SubscriptionPlan.create({
-          name: 'Vendor Standard Plan',
-          code: 'VENDOR_STANDARD',
-          description: 'Standard operational subscription for verified vendors.',
-          price: 0,
-          monthlyPrice: 0,
-          yearlyPrice: 0,
-          currency: 'INR',
-          applicableEntityType: 'VENDOR',
-          displayOrder: 1,
-          features: ['Unlimited Product Listings', 'Marketplace Storefront', 'Direct Orders & Payouts'],
-          isActive: true,
-        });
+    const hasActiveSub = Boolean(activeVendorSub || activeLegacySub);
+
+    // If subscribed, auto-sync vendor paid status and approval
+    if (hasActiveSub && (!vendor.isPaid || vendor.paymentStatus !== 'PAID' || vendor.status !== 'APPROVED')) {
+      vendor.isPaid = true;
+      vendor.paymentStatus = 'PAID';
+      vendor.status = 'APPROVED';
+      if (activeVendorSub) {
+        vendor.subscriptionId = activeVendorSub._id;
+        vendor.subscriptionPlan = activeVendorSub.planNameSnapshot || '';
+        vendor.subscriptionExpiry = activeVendorSub.expiryDate;
+      } else if (activeLegacySub) {
+        vendor.subscriptionExpiry = activeLegacySub.endDate;
       }
+      await vendor.save();
+    }
 
-      const startDate = new Date();
-      const endDate = new Date();
-      endDate.setFullYear(endDate.getFullYear() + 10);
+    if (!vendor.isPaid && vendor.paymentStatus !== 'PAID' && !hasActiveSub) {
+      throw new ApiError(403, 'Vendor subscription or platform activation payment required to unlock product management.', ERROR_CODES.FORBIDDEN);
+    }
 
-      currentSub = await Subscription.create({
-        ownerUserId: vendor.userId,
-        entityType: 'VENDOR',
-        entityId: vendor._id,
-        planId: vendorPlan._id,
-        billingCycle: 'YEARLY',
-        amount: 0,
-        startDate,
-        endDate,
-        status: 'ACTIVE',
-      });
+    if (vendor.status !== 'APPROVED' && !hasActiveSub) {
+      throw new ApiError(403, 'Vendor account is not approved for product management', ERROR_CODES.FORBIDDEN);
     }
 
     return vendor;

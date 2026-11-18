@@ -32,6 +32,7 @@ import { VendorDocument } from '../models/VendorDocument.js';
 import { VendorBankAccount } from '../models/VendorBankAccount.js';
 import { CustomerSubscription } from '../models/CustomerSubscription.js';
 import { Subscription } from '../models/Subscription.js';
+import { VendorSettlement } from '../models/VendorSettlement.js';
 
 // ==========================================
 // 1. DASHBOARD & OVERVIEW
@@ -1687,9 +1688,21 @@ export const getPayoutRequests = asyncWrapper(async (req, res) => {
   const skip = (pageNum - 1) * limitNum;
 
   const query = {};
-  if (status) query.status = status;
+  if (status && status !== 'ALL') query.status = status;
 
-  const [payouts, total, statsAgg] = await Promise.all([
+  // Filter for VendorSettlement distributions
+  const settlementQuery = {};
+  if (status === 'APPROVED' || status === 'PAID') {
+    settlementQuery.status = 'PAID';
+  } else if (status === 'PENDING') {
+    settlementQuery.status = { $in: ['PENDING_DELIVERY', 'ELIGIBLE', 'PROCESSING'] };
+  } else if (status === 'REJECTED') {
+    settlementQuery.status = { $in: ['FAILED', 'BLOCKED', 'REVERSED'] };
+  } else if (status && status !== 'ALL') {
+    settlementQuery.status = status;
+  }
+
+  const [withdrawals, withdrawalTotal, statsAgg, settlements, settlementTotal, settlementStatsAgg] = await Promise.all([
     VendorWithdrawal.find(query)
       .populate({
         path: 'vendorId',
@@ -1697,8 +1710,7 @@ export const getPayoutRequests = asyncWrapper(async (req, res) => {
         populate: { path: 'userId', select: 'name email phone' },
       })
       .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limitNum),
+      .lean(),
     VendorWithdrawal.countDocuments(query),
     VendorWithdrawal.aggregate([
       {
@@ -1709,24 +1721,80 @@ export const getPayoutRequests = asyncWrapper(async (req, res) => {
         },
       },
     ]),
+    VendorSettlement.find(settlementQuery)
+      .populate({
+        path: 'vendorId',
+        select: 'storeName balance pendingBalance totalSales kycStatus userId',
+        populate: { path: 'userId', select: 'name email phone' },
+      })
+      .populate('suborderId', 'subOrderNumber itemsSubtotal grandTotal')
+      .sort({ createdAt: -1 })
+      .lean(),
+    VendorSettlement.countDocuments(settlementQuery),
+    VendorSettlement.aggregate([
+      {
+        $group: {
+          _id: '$status',
+          totalAmount: { $sum: '$netPayable' },
+          count: { $sum: 1 },
+        },
+      },
+    ]),
   ]);
 
-  const summary = statsAgg.reduce((acc, curr) => {
-    acc[curr._id] = { count: curr.count, amount: curr.totalAmount };
-    return acc;
-  }, {});
+  const settlementPayouts = settlements.map((s) => ({
+    _id: s._id,
+    payoutType: 'ORDER_DISTRIBUTION',
+    vendorId: s.vendorId,
+    amount: s.netPayable,
+    payoutDetails: {
+      bankName: 'Order Payout Settlement (95%)',
+      accountNumber: s.payoutReference || `SETTLE-${s.suborderId?.subOrderNumber || s._id.toString().slice(-6)}`,
+      ifscCode: 'PLATFORM_ESCROW_DISBURSED',
+      accountHolderName: s.vendorId?.storeName || 'Vendor',
+    },
+    status: s.status === 'PAID' ? 'APPROVED' : (['FAILED', 'BLOCKED', 'REVERSED'].includes(s.status) ? 'REJECTED' : 'PENDING'),
+    createdAt: s.paidAt || s.createdAt,
+    adminNotes: `Direct immediate order distribution for gross sale ₹${s.grossAmount} (5% platform fee ₹${s.platformCommission} collected)`,
+  }));
+
+  const allPayouts = [...withdrawals, ...settlementPayouts].sort(
+    (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+  );
+
+  const total = withdrawalTotal + settlementTotal;
+  const paginatedPayouts = allPayouts.slice(skip, skip + limitNum);
+
+  const summary = {
+    PENDING: { count: 0, amount: 0 },
+    APPROVED: { count: 0, amount: 0 },
+    REJECTED: { count: 0, amount: 0 },
+  };
+
+  statsAgg.forEach((curr) => {
+    if (summary[curr._id]) {
+      summary[curr._id].count += curr.count;
+      summary[curr._id].amount += curr.totalAmount;
+    }
+  });
+
+  settlementStatsAgg.forEach((curr) => {
+    const key = curr._id === 'PAID' ? 'APPROVED' : (['FAILED', 'BLOCKED', 'REVERSED'].includes(curr._id) ? 'REJECTED' : 'PENDING');
+    summary[key].count += curr.count;
+    summary[key].amount += curr.totalAmount;
+  });
 
   return res.status(200).json(
     new ApiResponse(
       200,
       {
-        payouts,
+        payouts: paginatedPayouts,
         summary,
         pagination: {
           page: pageNum,
           limit: limitNum,
           total,
-          pages: Math.ceil(total / limitNum),
+          pages: Math.ceil(total / limitNum) || 1,
         },
       },
       'Payout requests retrieved successfully'

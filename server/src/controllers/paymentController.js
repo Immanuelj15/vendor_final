@@ -19,6 +19,7 @@ export const verifyPaymentSignature = asyncWrapper(async (req, res) => {
     razorpayOrderId,
     razorpayPaymentId,
     razorpaySignature,
+    requestingUser: req.user,
   });
   return res.status(200).json(new ApiResponse(200, { payment }, 'Payment verified and order fulfilled'));
 });

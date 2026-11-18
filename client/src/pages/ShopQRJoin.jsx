@@ -146,7 +146,7 @@ export const ShopQRJoin = () => {
               <div className="text-xs font-bold text-emerald-800 uppercase tracking-wider">Attribution Confirmed</div>
               <div className="text-base font-black text-slate-900">You are linked to this shopkeeper!</div>
               <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">
-                All your orders on FairKart directly support this verified local merchant.
+                All your orders on Baapoo Mart directly support this verified local merchant.
               </p>
               <Link
                 to="/products"

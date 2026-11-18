@@ -18,6 +18,7 @@ import { KYCDocument } from '../models/KYCDocument.js';
 import { Commission } from '../models/Commission.js';
 import { Payment } from '../models/Payment.js';
 import { Order } from '../models/Order.js';
+import { VendorOrder } from '../models/VendorOrder.js';
 import { Fulfillment } from '../models/Fulfillment.js';
 import { DeliveryAssignment } from '../models/DeliveryAssignment.js';
 import { DeliveryPartner } from '../models/DeliveryPartner.js';
@@ -551,8 +552,8 @@ export const adminService = {
 
   async getShopAttributions({ page = 1, limit = 10, shopId = '', customerUserId = '', date = '', status = '' }) {
     const query = {};
-    if (shopId) query.shopId = shopId;
-    if (customerUserId) query.customerUserId = customerUserId;
+    if (shopId && mongoose.isValidObjectId(shopId)) query.shopId = shopId;
+    if (customerUserId && mongoose.isValidObjectId(customerUserId)) query.customerUserId = customerUserId;
     if (status) query.status = status;
     if (date) {
       const start = new Date(date);
@@ -903,7 +904,19 @@ export const adminService = {
   },
 
   async createCoupon(data) {
-    const coupon = new Coupon(data);
+    const payload = { ...data };
+    if (!payload.type && payload.discountType) {
+      payload.type = payload.discountType === 'FLAT' ? 'FIXED' : payload.discountType;
+    }
+    if (!payload.endDate) {
+      const d = new Date();
+      d.setDate(d.getDate() + 30);
+      payload.endDate = d;
+    }
+    if (!payload.startDate) {
+      payload.startDate = new Date();
+    }
+    const coupon = new Coupon(payload);
     return await coupon.save();
   },
 

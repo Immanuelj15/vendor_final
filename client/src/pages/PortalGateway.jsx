@@ -80,7 +80,7 @@ export const PortalGateway = () => {
           <div className="inline-block px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold uppercase tracking-wider mb-2">
             Internal Operations Gateway
           </div>
-          <h2 className="text-2xl font-black text-slate-900 tracking-tight">FairKart Portals</h2>
+          <h2 className="text-2xl font-black text-slate-900 tracking-tight">Baapoo Mart Portals</h2>
           <p className="text-xs text-slate-500 mt-1">Select your designated portal to sign in or navigate to direct portal URLs</p>
         </div>
 

@@ -72,6 +72,9 @@ import VendorOrderDetail from '../pages/VendorOrderDetail';
 import VendorFinance from '../pages/VendorFinance';
 import VendorEarnings from '../pages/VendorEarnings';
 import { VendorDailySalesReport } from '../pages/VendorDailySalesReport';
+import { VendorShipping } from '../pages/VendorShipping';
+import { VendorPickupAddresses } from '../pages/VendorPickupAddresses';
+import { VendorInvoices } from '../pages/VendorInvoices';
 
 // Consolidated Operations Pages (Super Admin Portal)
 import { AdminFulfillmentDashboard } from '../pages/AdminFulfillmentDashboard';
@@ -101,6 +104,7 @@ import { SuperAdminProfile } from '../pages/super-admin/SuperAdminProfile';
 import { SuperAdminMLM } from '../pages/super-admin/SuperAdminMLM';
 import { SuperAdminCommissions } from '../pages/super-admin/SuperAdminCommissions';
 import { SuperAdminSubscriptions } from '../pages/super-admin/SuperAdminSubscriptions';
+import { SuperAdminVendorSubscriptionInvoices } from '../pages/super-admin/SuperAdminVendorSubscriptionInvoices';
 import { SuperAdminPayouts } from '../pages/super-admin/SuperAdminPayouts';
 import { SuperAdminLedger } from '../pages/super-admin/SuperAdminLedger';
 import { SuperAdminSpinWheel } from '../pages/super-admin/SuperAdminSpinWheel';
@@ -110,6 +114,7 @@ import SuperAdminCategories from '../pages/super-admin/SuperAdminCategories';
 import SuperAdminInventory from '../pages/super-admin/SuperAdminInventory';
 import SuperAdminOrders from '../pages/super-admin/SuperAdminOrders';
 import { SuperAdminOfflineBills } from '../pages/super-admin/SuperAdminOfflineBills';
+import { SuperAdminFairCoins } from '../pages/super-admin/SuperAdminFairCoins';
 
 // Hub & Delivery Portals
 import { HubDashboard } from '../pages/HubDashboard';
@@ -129,6 +134,11 @@ import { VendorInvitationPage } from '../pages/VendorInvitationPage';
 import { LegalDocumentView } from '../pages/legal/LegalDocumentView';
 import { SuperAdminLegalDocuments } from '../pages/super-admin/SuperAdminLegalDocuments';
 import { SuperAdminDataDeletions } from '../pages/super-admin/SuperAdminDataDeletions';
+import { SuperAdminShipping } from '../pages/super-admin/SuperAdminShipping';
+import { SuperAdminInvoices } from '../pages/super-admin/SuperAdminInvoices';
+import CustomerReturnsCancellations from '../pages/customer/CustomerReturnsCancellations';
+import VendorReturnsCancellations from '../pages/vendor/VendorReturnsCancellations';
+import SuperAdminReturnsManagement from '../pages/super-admin/SuperAdminReturnsManagement';
 
 export const AppRoutes = () => {
   return (
@@ -184,6 +194,8 @@ export const AppRoutes = () => {
         <Route path="notifications" element={<Notifications />} />
         <Route path="profile" element={<Profile />} />
         <Route path="addresses" element={<Addresses />} />
+        <Route path="returns" element={<CustomerReturnsCancellations />} />
+        <Route path="returns-cancellations" element={<CustomerReturnsCancellations />} />
         <Route path="settings" element={<Settings />} />
         <Route path="daily-purchases" element={<CustomerDailyPurchaseReport />} />
         <Route path="daily-sales" element={<CustomerDailyPurchaseReport />} />
@@ -213,6 +225,11 @@ export const AppRoutes = () => {
         <Route path="products/:id/edit" element={<VendorProductForm />} />
         <Route path="orders" element={<VendorOrders />} />
         <Route path="orders/:id" element={<VendorOrderDetail />} />
+        <Route path="shipping" element={<VendorShipping />} />
+        <Route path="pickup-addresses" element={<VendorPickupAddresses />} />
+        <Route path="invoices" element={<VendorInvoices />} />
+        <Route path="returns" element={<VendorReturnsCancellations />} />
+        <Route path="returns-cancellations" element={<VendorReturnsCancellations />} />
         <Route path="customers" element={<VendorCustomers />} />
         <Route path="daily-sales" element={<VendorDailySalesReport />} />
         <Route path="sales" element={<VendorEarnings />} />
@@ -229,6 +246,8 @@ export const AppRoutes = () => {
         <Route path="subscription/checkout" element={<VendorSubscriptionCheckout />} />
         <Route path="subscription/checkout/:planId" element={<VendorSubscriptionCheckout />} />
         <Route path="subscription/history" element={<VendorSubscriptionHistory />} />
+        <Route path="subscription-invoices" element={<VendorSubscriptionHistory />} />
+        <Route path="subscription/invoices" element={<VendorSubscriptionHistory />} />
         <Route path="network" element={<VendorNetworkDashboard />} />
         <Route path="referrals" element={<VendorNetworkDashboard />} />
         <Route path="refer" element={<VendorNetworkDashboard />} />
@@ -275,10 +294,13 @@ export const AppRoutes = () => {
         <Route path="subscriptions" element={<SuperAdminSubscriptions />} />
         <Route path="subscription-overview" element={<SuperAdminSubscriptions />} />
         <Route path="vendor-subscriptions" element={<AdminVendorSubscriptions />} />
+        <Route path="subscription-invoices" element={<SuperAdminVendorSubscriptionInvoices />} />
+        <Route path="vendor-subscription-invoices" element={<SuperAdminVendorSubscriptionInvoices />} />
         <Route path="subscription-plans" element={<AdminSubscriptionPlans />} />
         <Route path="payouts" element={<SuperAdminPayouts />} />
         <Route path="wallets" element={<SuperAdminLedger />} />
         <Route path="ledger" element={<SuperAdminLedger />} />
+        <Route path="fair-coins" element={<SuperAdminFairCoins />} />
         <Route path="payments" element={<SuperAdminSalesReport />} />
         <Route path="settlements" element={<AdminEntityList />} />
         <Route path="orders" element={<AdminEntityList />} />
@@ -290,6 +312,12 @@ export const AppRoutes = () => {
         <Route path="admin-orders" element={<SuperAdminOrders />} />
         <Route path="categories" element={<SuperAdminCategories />} />
         <Route path="fulfillment" element={<AdminFulfillmentDashboard />} />
+        <Route path="shipping" element={<SuperAdminShipping />} />
+        <Route path="logistics" element={<SuperAdminShipping />} />
+        <Route path="invoices" element={<SuperAdminInvoices />} />
+        <Route path="returns" element={<SuperAdminReturnsManagement />} />
+        <Route path="returns-refunds" element={<SuperAdminReturnsManagement />} />
+        <Route path="return-policies" element={<SuperAdminReturnsManagement />} />
         <Route path="franchises" element={<AdminManagement />} />
         <Route path="shopkeepers" element={<AdminManagement />} />
         <Route path="shops" element={<AdminManagement />} />
@@ -349,6 +377,8 @@ export const AppRoutes = () => {
         <Route path="account/dashboard" element={<Navigate to="/customer/dashboard" replace />} />
         <Route path="account/orders" element={<Navigate to="/customer/orders" replace />} />
         <Route path="account/orders/:id" element={<Navigate to="/customer/orders" replace />} />
+        <Route path="account/returns" element={<Navigate to="/customer/returns" replace />} />
+        <Route path="account/returns-cancellations" element={<Navigate to="/customer/returns" replace />} />
         <Route path="account/shop" element={<Navigate to="/customer/dashboard" replace />} />
         <Route path="account/attribution" element={<Navigate to="/customer/dashboard" replace />} />
         <Route path="account/referrals" element={<Navigate to="/customer/referrals" replace />} />

@@ -192,7 +192,7 @@ export const platformCommissionService = {
       referralCommission,
       vendorShare,
       vendorPayout: vendorShare,
-      vendorShareRate: hasReferrer ? 92 : 95,
+      vendorShareRate: hasReferrer ? 85 : 95,
     };
   },
 
@@ -714,6 +714,268 @@ export const platformCommissionService = {
                 debit: 0,
                 balanceSnapshot: nextPlatformBalance,
                 description: `${commissionRate}% Platform Commission earned on delivered order ${order.orderNumber} (${eligibleUnits} unit${eligibleUnits > 1 ? 's' : ''}, Vendor: ${suborder.vendorNameSnapshot})`,
+                metadata: {
+                  orderId: order._id,
+                  vendorId: suborder.vendorId,
+                  suborderId: suborder._id,
+                  grossAmount,
+                  eligibleUnits,
+                  commissionRate,
+                },
+              },
+            ],
+            opts
+          );
+        }
+      }
+    }
+  },
+
+  /**
+   * Distributes sales earnings to the concerned vendor and platform commission to Super Admin immediately upon payment.
+   */
+  async creditOrderEarningsImmediately(orderId, sessionArg = null) {
+    let session = sessionArg;
+    const isMock = session && typeof session.commitTransaction === 'function' && !session.id;
+    if (isMock) session = null;
+    const opts = session ? { session } : {};
+
+    let orderQuery = Order.findById(orderId);
+    if (session) orderQuery = orderQuery.session(session);
+    const order = await orderQuery;
+    if (!order) return;
+
+    let subordersQuery = VendorOrder.find({ parentOrderId: order._id });
+    if (session) subordersQuery = subordersQuery.session(session);
+    const suborders = await subordersQuery;
+
+    for (const suborder of suborders) {
+      const directReferrerVendor = await this.getDirectReferrerVendor(suborder.vendorId, session);
+      const hasReferrer = Boolean(directReferrerVendor);
+
+      const eligibleUnits = suborder.eligibleItemCount || suborder.items?.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0) || 1;
+      const grossAmount = suborder.subtotal || suborder.itemsSubtotal || 0;
+      const { commissionRate, platformCommission, referralRate, referralCommission, vendorShare } = this.calculate(grossAmount, eligibleUnits, hasReferrer);
+
+      // 1. Update Suborder status
+      suborder.platformCommission = platformCommission;
+      suborder.referrerVendorId = directReferrerVendor ? directReferrerVendor._id : null;
+      suborder.referralCommissionRate = referralRate;
+      suborder.referralCommission = referralCommission;
+      suborder.referralSettlementStatus = hasReferrer ? 'PAID' : 'NONE';
+      suborder.vendorEarning = vendorShare;
+      suborder.commissionRate = commissionRate;
+      suborder.settlementStatus = 'PAID';
+      suborder.settlementPaidAt = new Date();
+      await suborder.save(opts);
+
+      // 2. Update VendorSettlement record
+      let settlementQuery = VendorSettlement.findOne({ suborderId: suborder._id });
+      if (session) settlementQuery = settlementQuery.session(session);
+      let settlement = await settlementQuery;
+
+      if (!settlement) {
+        await VendorSettlement.create(
+          [
+            {
+              vendorId: suborder.vendorId,
+              suborderId: suborder._id,
+              grossAmount,
+              orderValue: grossAmount,
+              eligibleItemCount: eligibleUnits,
+              commissionRate,
+              commissionAmount: platformCommission,
+              vendorPayoutAmount: vendorShare,
+              platformCommission,
+              networkCommission: 0,
+              otherDeductions: referralCommission,
+              netPayable: vendorShare,
+              status: 'PAID',
+              settlementStatus: 'PAID',
+              eligibleAt: new Date(),
+            },
+          ],
+          opts
+        );
+      } else {
+        settlement.grossAmount = grossAmount;
+        settlement.orderValue = grossAmount;
+        settlement.eligibleItemCount = eligibleUnits;
+        settlement.commissionRate = commissionRate;
+        settlement.commissionAmount = platformCommission;
+        settlement.vendorPayoutAmount = vendorShare;
+        settlement.platformCommission = platformCommission;
+        settlement.otherDeductions = referralCommission;
+        settlement.netPayable = vendorShare;
+        settlement.status = 'PAID';
+        settlement.settlementStatus = 'PAID';
+        settlement.eligibleAt = new Date();
+        settlement.paidAt = settlement.paidAt || new Date();
+        if (!settlement.payoutReference) {
+          settlement.payoutReference = `SETTLE-${suborder.subOrderNumber || suborder._id.toString().slice(-6)}`;
+        }
+        await settlement.save(opts);
+      }
+
+      // 2b. Sync item settlementStatus on parent order
+      if (order && Array.isArray(order.items)) {
+        let orderChanged = false;
+        order.items.forEach((it) => {
+          if (it.vendorId && it.vendorId.toString() === suborder.vendorId.toString()) {
+            it.settlementStatus = 'PAID';
+            it.platformCommission = platformCommission;
+            it.vendorShare = vendorShare;
+            orderChanged = true;
+          }
+        });
+        if (orderChanged && typeof order.save === 'function') {
+          await order.save(opts);
+        }
+      }
+
+      // 3. Immediately credit selling vendor payable balance
+      let vendorQuery = Vendor.findById(suborder.vendorId);
+      if (session) vendorQuery = vendorQuery.session(session);
+      const vendor = await vendorQuery;
+
+      if (vendor) {
+        let existingLedger = await VendorLedger.findOne({
+          suborderId: suborder._id,
+          transactionType: 'SALE_EARNED',
+        });
+
+        if (!existingLedger) {
+          const newBalance = moneyUtils.addMoney(vendor.balance || 0, vendorShare);
+          vendor.balance = newBalance;
+          vendor.totalSales = moneyUtils.addMoney(vendor.totalSales || 0, grossAmount);
+          await vendor.save(opts);
+
+          await VendorLedger.create(
+            [
+              {
+                vendorId: vendor._id,
+                orderId: order._id,
+                suborderId: suborder._id,
+                transactionType: 'SALE_EARNED',
+                credit: vendorShare,
+                debit: 0,
+                balanceSnapshot: newBalance,
+                description: `Immediate sales earnings for order ${order.orderNumber} (Gross ₹${grossAmount} less ${commissionRate}% platform fee ₹${platformCommission}${hasReferrer ? ' and ' + referralRate + '% referral fee ₹' + referralCommission : ''})`,
+              },
+            ],
+            opts
+          );
+        }
+      }
+
+      // 4. Immediately credit direct referrer vendor 3% commission if applicable
+      if (hasReferrer && referralCommission > 0 && directReferrerVendor) {
+        let refComm = await VendorReferralCommission.findOne({
+          suborderId: suborder._id,
+          referrerVendorId: directReferrerVendor._id,
+        });
+
+        if (refComm) {
+          refComm.paymentVerificationStatus = 'VERIFIED';
+          refComm.commissionStatus = 'EARNED';
+          refComm.settlementStatus = 'PAID';
+          refComm.eligibleAt = new Date();
+          await refComm.save(opts);
+        } else {
+          await VendorReferralCommission.create(
+            [
+              {
+                orderId: order._id,
+                suborderId: suborder._id,
+                sellingVendorId: suborder.vendorId,
+                referrerVendorId: directReferrerVendor._id,
+                referrerUserId: directReferrerVendor.userId,
+                sellingUserId: suborder.userId || order.userId,
+                eligibleSaleAmount: grossAmount,
+                commissionRate: referralRate,
+                commissionAmount: referralCommission,
+                paymentVerificationStatus: 'VERIFIED',
+                commissionStatus: 'EARNED',
+                settlementStatus: 'PAID',
+                deliveredAt: new Date(),
+                eligibleAt: new Date(),
+              },
+            ],
+            opts
+          );
+        }
+
+        let refVendorQuery = Vendor.findById(directReferrerVendor._id);
+        if (session) refVendorQuery = refVendorQuery.session(session);
+        const refVendor = await refVendorQuery;
+
+        if (refVendor) {
+          let existingRefLedger = await VendorLedger.findOne({
+            suborderId: suborder._id,
+            transactionType: 'VENDOR_REFERRAL_COMMISSION_EARNED',
+          });
+
+          if (!existingRefLedger) {
+            const newRefBalance = moneyUtils.addMoney(refVendor.balance || 0, referralCommission);
+            refVendor.balance = newRefBalance;
+            await refVendor.save(opts);
+
+            await VendorLedger.create(
+              [
+                {
+                  vendorId: refVendor._id,
+                  orderId: order._id,
+                  suborderId: suborder._id,
+                  transactionType: 'VENDOR_REFERRAL_COMMISSION_EARNED',
+                  credit: referralCommission,
+                  debit: 0,
+                  balanceSnapshot: newRefBalance,
+                  description: `3% Direct Vendor Referral Commission for order ${order.orderNumber} (Referred Vendor: ${suborder.vendorNameSnapshot}, Gross ₹${grossAmount})`,
+                },
+              ],
+              opts
+            );
+          }
+        }
+
+        await Commission.updateMany(
+          { suborderId: suborder._id, type: 'VENDOR_DIRECT_REFERRAL_COMMISSION' },
+          { $set: { status: 'PAID', commissionPercentage: 3, commissionAmount: referralCommission } },
+          opts
+        );
+      }
+
+      // 5. Update Commission record for Super Admin platform fee to PAID
+      await Commission.updateMany(
+        { suborderId: suborder._id, type: 'PLATFORM_COMMISSION' },
+        { $set: { status: 'PAID', commissionPercentage: commissionRate, commissionAmount: platformCommission } },
+        opts
+      );
+
+      // 6. Record Super Admin platform fee in PlatformLedger
+      if (platformCommission > 0) {
+        const existingPlatformLedger = await PlatformLedger.findOne({
+          sourceEntityId: order._id.toString(),
+          'metadata.suborderId': suborder._id,
+          type: 'ORDER_COMMISSION',
+        });
+
+        if (!existingPlatformLedger) {
+          const latestPlatformRecord = await PlatformLedger.findOne().sort({ createdAt: -1 });
+          const currentPlatformBalance = latestPlatformRecord?.balanceSnapshot || 0;
+          const nextPlatformBalance = moneyUtils.addMoney(currentPlatformBalance, platformCommission);
+
+          await PlatformLedger.create(
+            [
+              {
+                transactionId: `PL-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`,
+                type: 'ORDER_COMMISSION',
+                sourceEntityType: 'ORDER',
+                sourceEntityId: order._id.toString(),
+                credit: platformCommission,
+                debit: 0,
+                balanceSnapshot: nextPlatformBalance,
+                description: `${commissionRate}% Platform Commission earned on order ${order.orderNumber} (${eligibleUnits} unit${eligibleUnits > 1 ? 's' : ''}, Vendor: ${suborder.vendorNameSnapshot})`,
                 metadata: {
                   orderId: order._id,
                   vendorId: suborder.vendorId,

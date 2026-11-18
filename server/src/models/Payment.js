@@ -21,6 +21,9 @@ const paymentSchema = new mongoose.Schema(
     verifiedAt: { type: Date },
     gatewaySignature: { type: String, default: '' },
     gatewayRawResponse: { type: mongoose.Schema.Types.Mixed },
+    refundId: { type: String, default: '' },
+    refundAmount: { type: Number, default: 0 },
+    refundedAt: { type: Date },
   },
   { timestamps: true }
 );

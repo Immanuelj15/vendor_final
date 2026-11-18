@@ -91,11 +91,11 @@ export const VendorLogin = () => {
 
   return (
     <AuthLayout
-      badge="FairKart Merchant Hub"
-      title="Scale Your Brand Across India with FairKart"
+      badge="Baapoo Mart Merchant Hub"
+      title="Scale Your Brand Across India with Baapoo Mart"
       subtitle="Comprehensive vendor catalog management, multi-channel product distribution, real-time inventory tracking, and guaranteed bank payouts."
       imageSrc="/images/vendor-auth.jpg"
-      imageAlt="FairKart Vendor Portal"
+      imageAlt="Baapoo Mart Vendor Portal"
       features={[
         { icon: Banknote, text: 'Fast automated vendor payouts & AES-256 bank encryption' },
         { icon: TrendingUp, text: 'Transparent analytics, sales trends & commission reports' },
@@ -114,7 +114,7 @@ export const VendorLogin = () => {
           <div className="inline-block px-2.5 py-0.5 rounded-full bg-blue-100/70 text-blue-800 text-[10px] font-black uppercase tracking-wider mb-2">
             Vendor Merchant Portal
           </div>
-          <h2 className="text-2xl font-black text-slate-900 tracking-tight">FairKart Vendor Portal</h2>
+          <h2 className="text-2xl font-black text-slate-900 tracking-tight">Baapoo Mart Vendor Portal</h2>
           <p className="text-xs text-slate-500 mt-1">Manage Store & Products</p>
         </div>
 
@@ -232,12 +232,12 @@ export const VendorLogin = () => {
           <button
             type="button"
             onClick={() => {
-              setEmailOrPhone('vendor@fairkart.dev');
+              setEmailOrPhone('vendor@baapoomart.com');
               setPassword('Password@123');
             }}
             className="text-[11px] font-bold text-blue-700 hover:text-blue-900 hover:underline"
           >
-            Fill Demo (vendor@fairkart.dev)
+            Fill Demo (vendor@baapoomart.com)
           </button>
         </div>
 

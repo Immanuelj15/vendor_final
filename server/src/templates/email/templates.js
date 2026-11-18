@@ -133,7 +133,7 @@ export const templates = {
     'Payment Successful',
     `
       <p>Hello,</p>
-      <p>We have successfully received your payment of <span class="highlight">₹${(payment.amount / 100).toFixed(2)}</span> for ${orderNumber ? `Order #${orderNumber}` : 'your subscription'}.</p>
+      <p>We have successfully received your payment of <span class="highlight">₹${Number(payment.amount).toFixed(2)}</span> for ${orderNumber ? `Order #${orderNumber}` : 'your subscription'}.</p>
       <p><strong>Transaction ID:</strong> ${payment.transactionId}</p>
       <p><strong>Date:</strong> ${new Date(payment.verifiedAt || Date.now()).toLocaleString()}</p>
       <p>Thank you for choosing FairKart!</p>

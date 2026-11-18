@@ -32,23 +32,21 @@ export const Orders = () => {
 
   const handleDownloadInvoice = async (orderId) => {
     try {
-      const res = await api.get(`/orders/${orderId}/invoice`);
-      const htmlContent = typeof res.data === 'string' ? res.data : (res.data?.data?.html || res.data?.html);
-      if (htmlContent) {
-        const win = window.open('', '_blank');
-        if (win) {
-          win.document.open();
-          win.document.write(htmlContent);
-          win.document.close();
-          return;
-        }
-      }
+      const res = await api.get(`/orders/${orderId}/invoice`, { responseType: 'blob' });
+      const blob = new Blob([res.data], { type: 'application/pdf' });
+      const fileUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = fileUrl;
+      a.download = `Invoice_${orderId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(fileUrl);
+      a.remove();
     } catch (e) {
-      console.warn('Direct API invoice fetch error, falling back to query token URL:', e);
+      console.warn('Authenticated invoice fetch error, falling back:', e);
+      const token = localStorage.getItem('fk_access_token') || localStorage.getItem('token') || localStorage.getItem('accessToken');
+      window.open(`http://localhost:5000/api/orders/${orderId}/invoice${token ? `?token=${token}` : ''}`, '_blank');
     }
-
-    const token = localStorage.getItem('token') || localStorage.getItem('accessToken');
-    window.open(`http://localhost:5000/api/orders/${orderId}/invoice${token ? `?token=${token}` : ''}`, '_blank');
   };
 
   const activeOrdersCount = orders.filter((o) => ACTIVE_STATUSES.includes(o.orderStatus)).length;
@@ -284,8 +282,8 @@ export const Orders = () => {
                       to={`/customer/orders/${order._id}`}
                       className="px-4 py-2 rounded-xl bg-[#30358F] hover:bg-[#252972] text-white font-bold text-xs transition-all shadow-xs inline-flex items-center gap-1.5"
                     >
-                      <Package className="w-3.5 h-3.5" />
-                      <span>View Details & Tracking</span>
+                      <Truck className="w-3.5 h-3.5 text-[#F7941D]" />
+                      <span>{currentTab === 'tracking' ? 'Track Live Shipment' : 'View Details & Tracking'}</span>
                     </Link>
 
                     <button

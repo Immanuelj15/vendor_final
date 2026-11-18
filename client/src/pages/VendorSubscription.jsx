@@ -18,6 +18,8 @@ import {
   Zap,
   Tag,
   Lock,
+  Receipt,
+  Download,
   ChevronRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -34,6 +36,7 @@ export const VendorSubscription = () => {
   const [paymentMethod, setPaymentMethod] = useState('RAZORPAY');
   const [confirmationData, setConfirmationData] = useState(null);
   const [errorMessage, setErrorMessage] = useState(null);
+  const [showAllPlans, setShowAllPlans] = useState(false);
 
   useEffect(() => {
     fetchSubscriptionData();
@@ -109,6 +112,8 @@ export const VendorSubscription = () => {
         amountPaid: checkoutPlan.price - (checkoutPlan.discount || 0),
         expiryDate: newSub?.expiryDate || newSub?.endDate,
         transactionId: res.data?.data?.transactionId || `TXN-${Date.now().toString().slice(-6)}`,
+        invoiceId: res.data?.data?.invoice?._id,
+        invoiceNumber: res.data?.data?.invoice?.invoiceNumber,
       });
 
       // Refresh subscription data
@@ -139,6 +144,24 @@ export const VendorSubscription = () => {
     subscription?.subscriptionStatus === 'Active';
   const remainingDays = subscription?.remainingDays ?? 0;
   const isExpiringSoon = isSubActive && remainingDays <= 7;
+  const isCurrentActivePlan = (plan) => {
+    if (!isSubActive || !subscription) return false;
+    const currentPlanId = subscription?.planId?._id || subscription?.planId;
+    const currentCode = subscription?.planSnapshot?.code;
+    const currentName = subscription?.planNameSnapshot || subscription?.planId?.name;
+
+    return (
+      (plan._id && currentPlanId && String(plan._id) === String(currentPlanId)) ||
+      (plan.code && currentCode && plan.code === currentCode) ||
+      (plan.name && currentName && plan.name.toLowerCase().trim() === currentName.toLowerCase().trim())
+    );
+  };
+
+  const availablePlans = isSubActive
+    ? plans.filter((plan) => !isCurrentActivePlan(plan))
+    : plans;
+
+  const displayedPlans = showAllPlans ? plans : availablePlans;
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-8 animate-fade-in">
@@ -233,6 +256,15 @@ export const VendorSubscription = () => {
               <p className="text-[11px] text-emerald-100 pt-2 border-t border-white/10">
                 ✓ All platform seller privileges (Product Listing, Inventory, Orders, Referral Commission Network) are now active.
               </p>
+              <div className="pt-2 flex justify-end">
+                <button
+                  onClick={() => navigate('/vendor/subscription/history')}
+                  className="px-3.5 py-1.5 bg-white text-emerald-800 font-black rounded-xl text-xs hover:bg-emerald-50 transition shadow-sm flex items-center gap-1.5"
+                >
+                  <Receipt className="w-3.5 h-3.5" />
+                  View & Download Invoices
+                </button>
+              </div>
             </div>
           </motion.div>
         )}
@@ -303,6 +335,17 @@ export const VendorSubscription = () => {
               )}
               <button
                 onClick={() => {
+
+                  navigate('/vendor/subscription/history');
+                }}
+                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl font-bold text-xs flex items-center gap-1.5 transition border border-slate-200/80 mr-2"
+
+              >
+                <Receipt className="w-4 h-4 text-[#30358F]" />
+                Invoices
+              </button>
+              <button
+                onClick={() => {
                   const firstPlan = plans[0];
                   if (firstPlan) handleOpenCheckout(firstPlan);
                 }}
@@ -328,37 +371,75 @@ export const VendorSubscription = () => {
       {/* VENDOR PRICING CARDS (Section 4 Requirement)             */}
       {/* ======================================================== */}
       <div className="space-y-6">
-        <div>
-          <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-            Select Your Subscription Plan
-          </h2>
-          <p className="text-xs text-slate-500">
-            All prices are retrieved dynamically from the database. Zero hidden listing fees.
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+              {isSubActive && !showAllPlans ? 'Available Subscription Plans' : 'Select Your Subscription Plan'}
+            </h2>
+            <p className="text-xs text-slate-500">
+              {isSubActive && !showAllPlans
+                ? 'Showing available plans for your store tier. Your currently active plan is displayed above.'
+                : 'All prices are retrieved dynamically from the database. Zero hidden listing fees.'}
+            </p>
+          </div>
+
+          {isSubActive && (
+            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-2xl text-xs font-bold shrink-0 self-start sm:self-auto">
+              <button
+                type="button"
+                onClick={() => setShowAllPlans(false)}
+                className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
+                  !showAllPlans
+                    ? 'bg-white text-slate-900 shadow-xs'
+                    : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                Available Plans ({availablePlans.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowAllPlans(true)}
+                className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
+                  showAllPlans
+                    ? 'bg-white text-slate-900 shadow-xs'
+                    : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                All Plans ({plans.length})
+              </button>
+            </div>
+          )}
         </div>
 
-        {plans.length === 0 ? (
+        {displayedPlans.length === 0 ? (
           <div className="p-12 text-center bg-white rounded-3xl border border-slate-200 space-y-3">
             <AlertCircle className="w-12 h-12 text-[#F7941D] mx-auto" />
             <h3 className="text-base font-black text-slate-800">
-              Vendor subscription plans are currently unavailable.
+              {isSubActive
+                ? 'You are currently subscribed to the top available vendor plan.'
+                : 'Vendor subscription plans are currently unavailable.'}
             </h3>
             <p className="text-xs text-slate-500 max-w-sm mx-auto">
-              Please check back later or contact BAAPOO MART administrator support.
+              {isSubActive
+                ? 'Your active subscription gives you full access to product management and store tools.'
+                : 'Please check back later or contact BAAPOO MART administrator support.'}
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {plans.map((plan) => {
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {displayedPlans.map((plan) => {
               const netPrice = plan.price - (plan.discount || 0);
               const isPopular = plan.badge?.toLowerCase().includes('popular');
               const isBestValue = plan.badge?.toLowerCase().includes('best');
+              const isCurrentPlan = isCurrentActivePlan(plan);
 
               return (
                 <div
                   key={plan._id || plan.id}
                   className={`bg-white rounded-3xl p-6 transition-all duration-300 flex flex-col justify-between relative border ${
-                    isBestValue
+                    isCurrentPlan
+                      ? 'border-emerald-400 shadow-lg ring-2 ring-emerald-300/30 bg-emerald-50/20'
+                      : isBestValue
                       ? 'border-[#30358F] shadow-xl ring-2 ring-[#30358F]/20'
                       : isPopular
                       ? 'border-[#ED1C2E] shadow-xl ring-2 ring-[#ED1C2E]/20'
@@ -366,7 +447,12 @@ export const VendorSubscription = () => {
                   }`}
                 >
                   {/* Badge */}
-                  {plan.badge && (
+                  {isCurrentPlan ? (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider shadow-sm bg-emerald-600 text-white flex items-center gap-1">
+                      <CheckCircle className="w-3 h-3" />
+                      Active Plan
+                    </div>
+                  ) : plan.badge ? (
                     <div
                       className={`absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider shadow-sm ${
                         isBestValue
@@ -378,7 +464,7 @@ export const VendorSubscription = () => {
                     >
                       {plan.badge}
                     </div>
-                  )}
+                  ) : null}
 
                   <div>
                     {/* Header */}
@@ -389,9 +475,9 @@ export const VendorSubscription = () => {
                       <h3 className="text-lg font-black text-slate-900 mt-0.5">
                         {plan.name}
                       </h3>
-                      <p className="text-[11px] text-slate-500 mt-1 min-h-[32px] line-clamp-2">
+                      <div className="text-[11px] text-slate-500 mt-1 min-h-[32px] line-clamp-2">
                         {plan.description || 'Verified merchant store privileges.'}
-                      </p>
+                      </div>
                     </div>
 
                     {/* Price Section */}
@@ -463,21 +549,28 @@ export const VendorSubscription = () => {
                     </div>
                   </div>
 
-                  {/* Subscribe Now Button */}
+                  {/* Subscribe / Action Button */}
                   <div className="pt-6 mt-6 border-t border-slate-100">
-                    <button
-                      onClick={() => handleOpenCheckout(plan)}
-                      className={`w-full py-3 rounded-2xl font-black text-xs transition-all shadow-md flex items-center justify-center gap-1.5 ${
-                        isBestValue
-                          ? 'bg-[#30358F] hover:bg-[#252a73] text-white shadow-[#30358F]/25'
-                          : isPopular
-                          ? 'bg-[#ED1C2E] hover:bg-[#d61828] text-white shadow-[#ED1C2E]/25'
-                          : 'bg-slate-900 hover:bg-slate-800 text-white'
-                      }`}
-                    >
-                      Subscribe Now
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </button>
+                    {isCurrentPlan ? (
+                      <div className="w-full py-3 rounded-2xl font-black text-xs bg-emerald-50 text-emerald-800 border border-emerald-300 flex items-center justify-center gap-1.5">
+                        <CheckCircle className="w-4 h-4 text-emerald-600" />
+                        <span>Currently Active</span>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => handleOpenCheckout(plan)}
+                        className={`w-full py-3 rounded-2xl font-black text-xs transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer ${
+                          isBestValue
+                            ? 'bg-[#30358F] hover:bg-[#252a73] text-white shadow-[#30358F]/25'
+                            : isPopular
+                            ? 'bg-[#ED1C2E] hover:bg-[#d61828] text-white shadow-[#ED1C2E]/25'
+                            : 'bg-slate-900 hover:bg-slate-800 text-white'
+                        }`}
+                      >
+                        <span>{isSubActive ? 'Switch / Upgrade Plan' : 'Subscribe Now'}</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
                 </div>
               );
@@ -506,9 +599,9 @@ export const VendorSubscription = () => {
               <h3 className="text-xl font-black text-slate-900 pt-2">
                 Checkout Summary
               </h3>
-              <p className="text-xs text-slate-500">
+              <div className="text-xs text-slate-500">
                 Review your subscription details before activating.
-              </p>
+              </div>
             </div>
 
             {/* Price breakdown */}

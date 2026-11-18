@@ -16,9 +16,12 @@
     "test:phase4": "node scripts/testPhase4.js",
     "test:phase6": "node scripts/testPhase6.js",
     "migrate:referral-9-level": "node scripts/migrateReferralNetworkTo9Levels.js",
-    "test:phase10": "node scripts/testPhase10.js"
+    "test:phase10": "node scripts/testPhase10.js",
+    "test:shipping": "node scripts/testShiprocketAutomated.js",
+    "test": "node scripts/testShiprocketAutomated.js"
   },
   "dependencies": {
+    "axios": "^1.21.0",
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
@@ -31,6 +34,7 @@
     "mongoose": "^8.4.1",
     "morgan": "^1.10.0",
     "otplib": "^13.5.0",
+    "pdfkit": "^0.20.2",
     "qrcode": "^1.5.4",
     "razorpay": "^2.9.8",
     "zod": "^3.23.8"

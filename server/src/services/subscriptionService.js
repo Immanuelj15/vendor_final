@@ -129,8 +129,18 @@ export const subscriptionService = {
       }
 
       // 3. Check expected amount
-      if (payment.amount !== subscription.planId.price) {
-        throw new ApiError(400, `Payment amount ₹${payment.amount} does not match plan price ₹${subscription.planId.price}`, ERROR_CODES.BAD_REQUEST);
+      const planPrice = subscription.planId.price ?? (subscription.billingCycle === 'YEARLY' || subscription.billingCycle === 'ANNUAL' ? subscription.planId.yearlyPrice : (subscription.planId.monthlyPrice || subscription.amount));
+      if (payment.amount !== planPrice && payment.amount !== subscription.amount) {
+        throw new ApiError(400, `Payment amount ₹${payment.amount} does not match expected subscription price ₹${planPrice}`, ERROR_CODES.BAD_REQUEST);
+      }
+
+      // Idempotency & Replay Protection (FIN-10): Reusing paymentId cannot extend subscription repeatedly
+      if (payment.isConsumed || (subscription.paymentId && subscription.paymentId.toString() === payment._id.toString() && subscription.status === 'ACTIVE')) {
+        if (useTransaction) {
+          await session.commitTransaction();
+          session.endSession();
+        }
+        return subscription;
       }
 
       const isAlreadyActive = subscription.status === 'ACTIVE';
@@ -145,8 +155,9 @@ export const subscriptionService = {
         startDate = new Date(subscription.endDate);
       }
 
+      const durationDays = subscription.planId.durationDays || (subscription.billingCycle === 'YEARLY' || subscription.billingCycle === 'ANNUAL' ? 365 : 30);
       const endDate = new Date(startDate);
-      endDate.setDate(startDate.getDate() + subscription.planId.durationDays);
+      endDate.setDate(startDate.getDate() + durationDays);
 
       // 5. Update Subscription state
       subscription.startDate = startDate;
@@ -158,6 +169,11 @@ export const subscriptionService = {
         subscription.renewalCount += 1;
       }
       await subscription.save({ session: useTransaction ? session : undefined });
+
+      // Mark payment as consumed for subscription activation
+      payment.isConsumed = true;
+      payment.subscriptionActivatedAt = now;
+      await payment.save({ session: useTransaction ? session : undefined });
 
       // 6. Update target entity reference and end date
       const entityId = subscription.entityId;

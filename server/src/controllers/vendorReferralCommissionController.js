@@ -290,7 +290,7 @@ export const getAdminReferralOverview = asyncWrapper(async (req, res) => {
         startDate: start,
         endDate: end,
         metrics: {
-          commissionRate: 3,
+          commissionRate: 10,
           totalReferralPairs,
           totalReferredSales,
           totalReferralCommissions,

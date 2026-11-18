@@ -72,7 +72,15 @@ export const AdminEntityList = () => {
   const handleCreateCoupon = async (e) => {
     e.preventDefault();
     try {
-      await api.post('/admin/coupons', couponForm);
+      const payload = {
+        code: couponForm.code,
+        type: couponForm.discountType === 'FLAT' ? 'FIXED' : couponForm.discountType,
+        discountValue: Number(couponForm.discountValue),
+        minPurchase: Number(couponForm.minPurchase || 0),
+        maxDiscount: Number(couponForm.maxDiscount || 0),
+        endDate: couponForm.endDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      };
+      await api.post('/admin/coupons', payload);
       alert('Coupon created successfully!');
       setShowCreateForm(false);
       fetchEntities();
@@ -438,6 +446,26 @@ export const AdminEntityList = () => {
                 required
                 value={couponForm.discountValue}
                 onChange={(e) => setCouponForm({ ...couponForm, discountValue: Number(e.target.value) })}
+                className="w-full bg-slate-800 border border-slate-700 text-xs text-white px-3 py-1.5 rounded-lg"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[10px] text-slate-400 mb-1">Min Purchase (₹)</label>
+              <input
+                type="number"
+                value={couponForm.minPurchase}
+                onChange={(e) => setCouponForm({ ...couponForm, minPurchase: Number(e.target.value) })}
+                className="w-full bg-slate-800 border border-slate-700 text-xs text-white px-3 py-1.5 rounded-lg"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-slate-400 mb-1">Expiry Date</label>
+              <input
+                type="date"
+                value={couponForm.endDate ? couponForm.endDate.split('T')[0] : ''}
+                onChange={(e) => setCouponForm({ ...couponForm, endDate: new Date(e.target.value).toISOString() })}
                 className="w-full bg-slate-800 border border-slate-700 text-xs text-white px-3 py-1.5 rounded-lg"
               />
             </div>

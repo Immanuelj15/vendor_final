@@ -92,11 +92,12 @@ export const logoutUser = createAsyncThunk('auth/logoutUser', async () => {
   }
 });
 
+const token = getAccessToken();
 const initialState = {
   user: null,
-  accessToken: getAccessToken(),
-  isAuthenticated: Boolean(getAccessToken()),
-  isLoading: false,
+  accessToken: token,
+  isAuthenticated: Boolean(token),
+  isLoading: Boolean(token),
   error: null,
 };
 
@@ -187,11 +188,16 @@ const authSlice = createSlice({
       })
 
       // Fetch Me
+      .addCase(fetchCurrentUser.pending, (state) => {
+        state.isLoading = true;
+      })
       .addCase(fetchCurrentUser.fulfilled, (state, action) => {
+        state.isLoading = false;
         state.isAuthenticated = true;
         state.user = action.payload;
       })
       .addCase(fetchCurrentUser.rejected, (state) => {
+        state.isLoading = false;
         state.isAuthenticated = false;
         state.user = null;
         state.accessToken = null;

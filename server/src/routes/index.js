@@ -44,6 +44,8 @@ import franchiseVendorRoutes from './franchiseVendorRoutes.js';
 import mfaRoutes from './mfaRoutes.js';
 import bannerRoutes from './bannerRoutes.js';
 import legalDocumentRoutes from './legalDocumentRoutes.js';
+import invoiceRoutes from './invoiceRoutes.js';
+import vendorSubscriptionInvoiceRoutes from './vendorSubscriptionInvoiceRoutes.js';
 
 const router = express.Router();
 
@@ -96,8 +98,12 @@ router.use('/admin', adminRoutes);
 router.use('/payments', paymentRoutes);
 router.use('/finance', financeRoutes); // ADDED FOR MODULE 8
 router.use('/shipping', shippingRoutes); // ADDED FOR MODULE 9
+router.use('/invoices', invoiceRoutes); // DYNAMIC INVOICE GENERATION SYSTEM
+router.use('/vendor-subscriptions/invoices', vendorSubscriptionInvoiceRoutes);
+router.use('/vendor-subscription-invoices', vendorSubscriptionInvoiceRoutes);
 router.use('/franchises', franchiseRoutes);
 router.use('/notifications', notificationRoutes);
+router.use('/fulfillment', fulfillmentRoutes);
 router.use('/fulfillments', fulfillmentRoutes);
 router.use('/hubs', hubRoutes);
 router.use('/deliveries', deliveryRoutes);

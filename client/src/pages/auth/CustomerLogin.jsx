@@ -44,11 +44,11 @@ export const CustomerLogin = () => {
 
   return (
     <AuthLayout
-      badge="FairKart Shopper Portal"
+      badge="Baapoo Mart Shopper Portal"
       title="Shop, Earn Coins & Win Live Rewards"
       subtitle="Join thousands of shoppers earning guaranteed Fair Coins on every verified checkout, spin wheel bonuses, and 9-level upline partner commissions."
       imageSrc="/images/customer-auth.jpg"
-      imageAlt="FairKart Shopping Rewards"
+      imageAlt="Baapoo Mart Shopping Rewards"
       theme="blue"
     >
       <div className="w-full max-w-md bg-white/95 backdrop-blur-xl border border-blue-100/90 rounded-3xl p-8 shadow-2xl shadow-blue-500/10 relative overflow-hidden">
@@ -61,7 +61,7 @@ export const CustomerLogin = () => {
             <ShoppingBag className="w-7 h-7" />
           </div>
           <div className="inline-block px-2.5 py-0.5 rounded-full bg-blue-100/60 text-blue-700 text-[10px] font-black uppercase tracking-wider mb-2">
-            FairKart Customer
+            Baapoo Mart Customer
           </div>
           <h2 className="text-2xl font-black text-slate-900 tracking-tight">Welcome Back</h2>
           <p className="text-xs text-slate-500 mt-1">Sign in to your account, orders & Fair Coins wallet</p>
@@ -153,18 +153,18 @@ export const CustomerLogin = () => {
           <button
             type="button"
             onClick={() => {
-              setEmailOrPhone('user@fairkart.dev');
+              setEmailOrPhone('user@baapoomart.com');
               setPassword('Password@123');
             }}
             className="text-[11px] font-bold text-blue-600 hover:text-blue-800 hover:underline"
           >
-            Fill Demo (user@fairkart.dev)
+            Fill Demo (user@baapoomart.com)
           </button>
         </div>
 
         <div className="mt-4 pt-4 border-t border-slate-100 flex flex-col gap-2 text-center">
           <p className="text-xs text-slate-500">
-            New to FairKart?{' '}
+            New to Baapoo Mart?{' '}
             <Link to="/register" className="text-blue-600 hover:underline font-bold">
               Create Customer Account
             </Link>

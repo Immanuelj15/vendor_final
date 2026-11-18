@@ -13,12 +13,32 @@ if (!process.env.JWT_REFRESH_SECRET) {
   throw new Error('FATAL CONFIG ERROR: JWT_REFRESH_SECRET is required in environment variables!');
 }
 
+const INSECURE_DEFAULT_SECRETS = [
+  'fairkart_access_secret_2026',
+  'fairkart_refresh_secret_2026',
+  'fairkart_super_secret_access_token_key_2026_x99!',
+  'fairkart_super_secret_refresh_token_key_2026_z88!',
+  'secret',
+  'changeme',
+  'admin',
+  'password',
+];
+
 if (isProduction) {
-  if (!process.env.RAZORPAY_KEY_ID) {
-    throw new Error('FATAL CONFIG ERROR: RAZORPAY_KEY_ID is required in production!');
+  if (INSECURE_DEFAULT_SECRETS.includes(process.env.JWT_ACCESS_SECRET) || process.env.JWT_ACCESS_SECRET.length < 32) {
+    throw new Error('FATAL CONFIG ERROR: JWT_ACCESS_SECRET must be a strong secret of at least 32 characters and cannot be a default demo value in production!');
   }
-  if (!process.env.RAZORPAY_KEY_SECRET) {
-    throw new Error('FATAL CONFIG ERROR: RAZORPAY_KEY_SECRET is required in production!');
+  if (INSECURE_DEFAULT_SECRETS.includes(process.env.JWT_REFRESH_SECRET) || process.env.JWT_REFRESH_SECRET.length < 32) {
+    throw new Error('FATAL CONFIG ERROR: JWT_REFRESH_SECRET must be a strong secret of at least 32 characters and cannot be a default demo value in production!');
+  }
+  if (!process.env.RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID === 'rzp_test_demo') {
+    throw new Error('FATAL CONFIG ERROR: A valid RAZORPAY_KEY_ID is required in production!');
+  }
+  if (!process.env.RAZORPAY_KEY_SECRET || process.env.RAZORPAY_KEY_SECRET === 'rzp_secret_demo') {
+    throw new Error('FATAL CONFIG ERROR: A valid RAZORPAY_KEY_SECRET is required in production!');
+  }
+  if (!process.env.RAZORPAY_WEBHOOK_SECRET || process.env.RAZORPAY_WEBHOOK_SECRET === 'rzp_webhook_demo') {
+    throw new Error('FATAL CONFIG ERROR: A valid RAZORPAY_WEBHOOK_SECRET is required in production!');
   }
 }
 
@@ -34,4 +54,13 @@ export const env = {
   RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID || 'rzp_test_demo',
   RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET || 'rzp_secret_demo',
   RAZORPAY_WEBHOOK_SECRET: process.env.RAZORPAY_WEBHOOK_SECRET || 'rzp_webhook_demo',
+  // ── Shiprocket Integration ────────────────────────────────────────────────
+  // Obtain these from your Shiprocket account:
+  // Settings → API → Add New API User
+  SHIPROCKET_API_KEY: process.env.SHIPROCKET_API_KEY || '',
+  SHIPROCKET_EMAIL: process.env.SHIPROCKET_EMAIL || '',
+  SHIPROCKET_PASSWORD: process.env.SHIPROCKET_PASSWORD || process.env.SHIPROCKET_API_KEY || '',
+  SHIPROCKET_BASE_URL: process.env.SHIPROCKET_BASE_URL || 'https://apiv2.shiprocket.in/v1/external',
+  // Webhook security token — set in Shiprocket dashboard (Settings → API → Webhooks)
+  SHIPROCKET_WEBHOOK_SECRET: process.env.SHIPROCKET_WEBHOOK_SECRET || process.env.SHIPROCKET_API_KEY || 'sr_webhook_demo',
 };

@@ -193,14 +193,14 @@ export const Register = () => {
 
   return (
     <AuthLayout
-      badge="Join FairKart Network"
+      badge="Join Baapoo Mart Network"
       title="Create Your Account & Claim Welcome Coins"
       subtitle="Sign up in seconds to unlock member-only flash discounts, earn Fair Coins with every spin wheel, and build your referral upline."
       imageSrc="/images/customer-auth.jpg"
-      imageAlt="FairKart Registration"
+      imageAlt="Baapoo Mart Registration"
       features={[
         { icon: Coins, text: 'Instant 100 Welcome Fair Coins credited to wallet' },
-        { icon: Gift, text: 'Free daily spin on the FairKart Reward Wheel' },
+        { icon: Gift, text: 'Free daily spin on the Baapoo Mart Reward Wheel' },
         { icon: ShieldCheck, text: 'Safe, private, and verified customer protections' },
       ]}
       theme="blue"

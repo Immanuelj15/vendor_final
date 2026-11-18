@@ -401,7 +401,7 @@ export const SuperAdminAdmins = () => {
                   <label className="block text-slate-700 font-bold mb-1">Email Address</label>
                   <input
                     type="email"
-                    placeholder="e.g. officer@fairkart.dev"
+                    placeholder="e.g. officer@baapoomart.com"
                     value={createForm.email}
                     onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-slate-900 font-medium focus:outline-none focus:border-blue-600 focus:bg-white"

@@ -108,10 +108,10 @@ export const SpinWheel = () => {
       <div className="space-y-3">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-50 text-amber-800 text-xs font-bold border border-amber-200 shadow-xs">
           <Sparkles className="w-4 h-4 text-amber-500" />
-          <span>FairKart Daily Lucky Spin (5 Divisions)</span>
+          <span>Baapoo Mart Daily Lucky Spin (5 Divisions)</span>
         </div>
         <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
-          {wheelData?.title || 'Daily FairKart Spin & Win'}
+          {wheelData?.title || 'Daily Baapoo Mart Spin & Win'}
         </h1>
         <p className="text-sm text-slate-600 max-w-lg mx-auto">
           {wheelData?.description || 'Spin the 5-division wheel every day to win instant Fair Coins & Free Marketplace Products!'}
@@ -448,7 +448,7 @@ export const SpinWheel = () => {
                   <Coins className="w-10 h-10 text-amber-500 mx-auto" />
                   <div className="text-2xl font-black text-amber-600">{wonReward.title}</div>
                   <p className="text-xs font-semibold text-amber-800">
-                    {wonReward.value} Fair Coins have been credited directly to your FairKart Wallet!
+                    {wonReward.value} Fair Coins have been credited directly to your Baapoo Mart Wallet!
                   </p>
                 </div>
               )}

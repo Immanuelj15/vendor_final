@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import './VendorSubscriptionPlan.js';
 
 const vendorSubscriptionSchema = new mongoose.Schema(
   {

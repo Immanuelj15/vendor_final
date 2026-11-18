@@ -54,6 +54,8 @@ import {
   processOrder,
   packOrder,
   markReadyToShip,
+  shipOrder,
+  deliverOrder,
   getVendorDashboardStats
 } from '../controllers/vendorOrderController.js';
 
@@ -74,6 +76,8 @@ router.post('/orders/:id/accept', authorize('VENDOR'), acceptOrder);
 router.post('/orders/:id/process', authorize('VENDOR'), processOrder);
 router.post('/orders/:id/pack', authorize('VENDOR'), packOrder);
 router.post('/orders/:id/ready-to-ship', authorize('VENDOR'), markReadyToShip);
+router.post('/orders/:id/ship', authorize('VENDOR', 'ADMIN', 'SUPER_ADMIN'), shipOrder);
+router.post('/orders/:id/deliver', authorize('VENDOR', 'ADMIN', 'SUPER_ADMIN'), deliverOrder);
 
 // Profile Management (Accessible to PENDING/REJECTED/UNDER_REVIEW/APPROVED)
 router.get('/me', getVendorProfile);

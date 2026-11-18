@@ -52,7 +52,7 @@ export const SuperAdminProductForm = () => {
     shortDescription: '',
     categoryId: '',
     subCategory: '',
-    brandName: 'FairKart Direct',
+    brandName: 'Baapoo Direct',
     images: ['https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop'],
     mrp: 999,
     price: 799,
@@ -104,7 +104,7 @@ export const SuperAdminProductForm = () => {
             shortDescription: prod.shortDescription || '',
             categoryId: prod.categoryId?._id || prod.categoryId || '',
             subCategory: prod.subCategory || '',
-            brandName: prod.brandName || 'FairKart Direct',
+            brandName: prod.brandName || 'Baapoo Direct',
             images: prod.images?.length > 0 ? prod.images : ['https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop'],
             imageUrlInput: '',
             mrp: prod.mrp || 0,
@@ -306,7 +306,7 @@ export const SuperAdminProductForm = () => {
                 name="sourceType"
                 value="SUPER_ADMIN"
                 checked={formData.sourceType === 'SUPER_ADMIN'}
-                onChange={(e) => setFormData({ ...formData, sourceType: e.target.value, brandName: 'FairKart Direct' })}
+                onChange={(e) => setFormData({ ...formData, sourceType: e.target.value, brandName: 'Baapoo Direct' })}
                 className="w-4 h-4 accent-blue-600"
               />
               <div>
@@ -314,7 +314,7 @@ export const SuperAdminProductForm = () => {
                   <Crown className="w-4 h-4 text-amber-500" /> Super Admin Direct Sale
                 </span>
                 <p className="text-[11px] text-slate-500 mt-0.5">
-                  Product belongs directly to FairKart platform. Revenue recorded as Super Admin Product Sale.
+                  Product belongs directly to Baapoo Mart platform. Revenue recorded as Super Admin Product Sale.
                 </p>
               </div>
             </label>

@@ -262,6 +262,33 @@ import { dataDeletionController } from '../controllers/dataDeletionController.js
 router.get('/data-deletion-requests', dataDeletionController.getAdminRequests);
 router.post('/data-deletion-requests/:requestId/process', dataDeletionController.processAdminRequest);
 
+// =========================================================================
+// 20. Fair Coins Management (Super Admin Exclusive)
+// =========================================================================
+import {
+  getSuperAdminFairCoinsOverview,
+  getSuperAdminFairCoinsCustomers,
+  getSuperAdminFairCoinsTransactions,
+  getSuperAdminFairCoinsOrders,
+} from '../controllers/superAdminFairCoinController.js';
+
+router.get('/fair-coins/overview', getSuperAdminFairCoinsOverview);
+router.get('/fair-coins/customers', getSuperAdminFairCoinsCustomers);
+router.get('/fair-coins/transactions', getSuperAdminFairCoinsTransactions);
+router.get('/fair-coins/orders', getSuperAdminFairCoinsOrders);
+
+// =========================================================================
+// 21. Marketplace Commission & 7-Day Vendor Payout Management
+// =========================================================================
+import { marketplacePayoutController } from '../controllers/marketplacePayoutController.js';
+
+router.get('/marketplace/metrics', marketplacePayoutController.getSuperAdminMetrics);
+router.get('/marketplace/commissions', marketplacePayoutController.getCommissionTransactions);
+router.get('/marketplace/payouts', marketplacePayoutController.getVendorPayouts);
+router.post('/marketplace/payouts/:id/release', marketplacePayoutController.releaseVendorPayout);
+router.put('/marketplace/commission-rate', marketplacePayoutController.updateCommissionRate);
+router.post('/marketplace/trigger-eligibility', marketplacePayoutController.triggerEligibilityJob);
+
 export default router;
 
 

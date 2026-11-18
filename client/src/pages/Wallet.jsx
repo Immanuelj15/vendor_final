@@ -48,69 +48,50 @@ export const Wallet = () => {
     fetchWallet();
   }, [fetchWallet]);
 
-  const balance = Number(wallet?.balance ?? 0);
+  const balance = Number(wallet?.available ?? wallet?.balance ?? 0);
+  const totalBalance = Number(wallet?.balance ?? 0);
+  const reservedCoins = Number(wallet?.reserved ?? 0);
   // Authoritative fixed rule: 10 Fair Coins = ₹1 (Rupee equivalent = Fair Coin balance ÷ 10)
   const rupeeEquivalent = (balance / 10).toFixed(2);
-  const totalEarned = Number(wallet?.totalEarned ?? balance);
-  const totalSpent = Number(wallet?.totalSpent ?? 0);
+  const totalEarned = Number(wallet?.totalEarned ?? 0);
+  const totalRedeemed = Number(wallet?.totalRedeemed ?? wallet?.totalSpent ?? 0);
+  const totalReversed = Number(wallet?.totalReversed ?? 0);
 
   const getTransactionBadge = (tx) => {
-    if (tx.status === 'REVERSED') {
+    const status = tx.status || 'COMPLETED';
+    if (status === 'REVERSED' || tx.type === 'REVERSED') {
       return (
-        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
-          REVERSED
+        <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-rose-50 text-rose-700 border border-rose-200">
+          Reversed
         </span>
       );
     }
-    if (tx.status === 'FAILED') {
+    if (status === 'FAILED') {
       return (
-        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
-          FAILED
+        <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-slate-100 text-slate-700 border border-slate-200">
+          Failed
         </span>
       );
     }
-
-    switch (tx.type) {
-      case 'DEBIT':
-      case 'EXPIRATION':
-        return (
-          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
-            {tx.type}
-          </span>
-        );
-      case 'REFUND':
-        return (
-          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-            REFUND
-          </span>
-        );
-      case 'REFERRAL_REWARD':
-        return (
-          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-            REFERRAL
-          </span>
-        );
-      case 'PURCHASE_REWARD':
-        return (
-          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-            PURCHASE
-          </span>
-        );
-      case 'SPIN_REWARD':
-        return (
-          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-            SPIN & WIN
-          </span>
-        );
-      case 'CREDIT':
-      case 'BONUS':
-      default:
-        return (
-          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
-            {tx.type || 'CREDIT'}
-          </span>
-        );
+    if (tx.type === 'REDEEMED' || tx.type === 'DEBIT') {
+      return (
+        <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-amber-50 text-amber-800 border border-amber-200">
+          Redeemed
+        </span>
+      );
     }
+    if (tx.type === 'REFUNDED') {
+      return (
+        <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-blue-50 text-blue-700 border border-blue-200">
+          Refunded
+        </span>
+      );
+    }
+    return (
+      <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200">
+        Credited
+      </span>
+    );
   };
 
   return (
@@ -120,10 +101,10 @@ export const Wallet = () => {
         <div>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight flex items-center gap-2">
             <Coins className="w-7 h-7 text-amber-500" />
-            <span>My Fair Coins</span>
+            <span>Customer Fair Coins Wallet</span>
           </h1>
           <p className="text-xs text-slate-500 mt-1">
-            Track your loyalty rewards, referral bonuses, and checkout redemptions.
+            Track your available Fair Coins, rupee value, earnings, redemptions, and full transaction ledger.
           </p>
         </div>
 
@@ -153,78 +134,99 @@ export const Wallet = () => {
         </div>
       )}
 
-      {/* Main Wallet Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* Main Wallet Summary Cards: 4 KPIs */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {/* Card 1: Available Balance & Rupee Equivalent */}
-        <div className="bg-gradient-to-tr from-blue-600 via-indigo-600 to-indigo-700 text-white p-6 rounded-3xl shadow-lg shadow-blue-500/20 space-y-3 relative overflow-hidden">
-          <div className="absolute right-0 top-0 bottom-0 w-48 bg-radial from-amber-400/20 to-transparent pointer-events-none" />
-
+        <div className="bg-gradient-to-tr from-blue-700 via-indigo-700 to-indigo-800 text-white p-6 rounded-3xl shadow-lg shadow-blue-500/15 space-y-3 relative overflow-hidden flex flex-col justify-between">
           <div className="flex items-center justify-between relative z-10">
             <div className="text-xs font-bold uppercase tracking-wider text-blue-100 flex items-center gap-1.5">
               <Coins className="w-4 h-4 text-amber-300" />
-              <span>Available Balance</span>
+              <span>Available Fair Coins</span>
             </div>
             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/20 text-white backdrop-blur-xs">
               Active
             </span>
           </div>
 
-          <div className="relative z-10">
-            <div className="text-4xl font-black font-mono tracking-tight">
+          <div className="relative z-10 py-1">
+            <div className="text-3xl sm:text-4xl font-black font-mono tracking-tight">
               {loading ? '...' : balance.toLocaleString()}
-              <span className="text-lg font-bold text-blue-200 ml-2">Coins</span>
+              <span className="text-sm font-bold text-blue-200 ml-2">Coins</span>
             </div>
+            {reservedCoins > 0 && (
+              <p className="text-[11px] text-amber-200 mt-1 font-semibold">
+                ({reservedCoins.toLocaleString()} reserved for pending checkout)
+              </p>
+            )}
           </div>
 
           <div className="pt-2 border-t border-white/15 space-y-1 relative z-10">
             <div className="flex items-center justify-between text-xs">
-              <span className="text-blue-100">Equivalent Value:</span>
-              <span className="font-black text-amber-300 font-mono text-sm">
+              <span className="text-blue-100">Rupee Value:</span>
+              <span className="font-black text-amber-300 font-mono text-base">
                 ₹{loading ? '...' : rupeeEquivalent}
               </span>
             </div>
-            <div className="text-[11px] text-blue-100/90 font-medium flex items-center justify-between">
-              <span>Fixed Conversion Rate:</span>
-              <span className="font-bold text-white">10 Fair Coins = ₹1</span>
+            <div className="text-[10px] text-blue-200 font-medium">
+              10 Fair Coins = ₹1 (Fixed)
             </div>
           </div>
         </div>
 
-        {/* Card 2: Total Earned */}
-        <div className="bg-white border border-slate-200/80 p-6 rounded-3xl shadow-xs space-y-3 flex flex-col justify-between">
+        {/* Card 2: Total Coins Earned */}
+        <div className="bg-white border border-slate-200 p-6 rounded-3xl shadow-xs space-y-3 flex flex-col justify-between">
           <div>
             <div className="text-xs text-slate-500 font-bold uppercase tracking-wider flex items-center justify-between">
               <span>Total Earned</span>
-              <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
                 <ArrowUpRight className="w-4 h-4" />
               </div>
             </div>
-            <div className="text-3xl font-black text-emerald-600 mt-2 font-mono">
+            <div className="text-2xl sm:text-3xl font-black text-emerald-600 mt-2 font-mono">
               +{loading ? '...' : totalEarned.toLocaleString()}
               <span className="text-xs font-bold text-slate-400 ml-1">Coins</span>
             </div>
           </div>
-          <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-500">
-            Earned from purchases, referral network & daily spins.
+          <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-500 font-medium">
+            Welcome bonus & 100 coins/eligible item.
           </div>
         </div>
 
-        {/* Card 3: Total Redeemed */}
-        <div className="bg-white border border-slate-200/80 p-6 rounded-3xl shadow-xs space-y-3 flex flex-col justify-between">
+        {/* Card 3: Total Coins Redeemed */}
+        <div className="bg-white border border-slate-200 p-6 rounded-3xl shadow-xs space-y-3 flex flex-col justify-between">
           <div>
             <div className="text-xs text-slate-500 font-bold uppercase tracking-wider flex items-center justify-between">
               <span>Total Redeemed</span>
-              <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold">
                 <ArrowDownRight className="w-4 h-4" />
               </div>
             </div>
-            <div className="text-3xl font-black text-slate-800 mt-2 font-mono">
-              -{loading ? '...' : totalSpent.toLocaleString()}
+            <div className="text-2xl sm:text-3xl font-black text-amber-800 mt-2 font-mono">
+              -{loading ? '...' : totalRedeemed.toLocaleString()}
               <span className="text-xs font-bold text-slate-400 ml-1">Coins</span>
             </div>
           </div>
-          <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-500">
-            Redeemed at 10 Coins = ₹1 for instant checkout discounts.
+          <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-500 font-medium">
+            Applied at checkout for rupee discounts.
+          </div>
+        </div>
+
+        {/* Card 4: Total Coins Reversed */}
+        <div className="bg-white border border-slate-200 p-6 rounded-3xl shadow-xs space-y-3 flex flex-col justify-between">
+          <div>
+            <div className="text-xs text-slate-500 font-bold uppercase tracking-wider flex items-center justify-between">
+              <span>Total Reversed</span>
+              <div className="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center font-bold">
+                <RefreshCw className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="text-2xl sm:text-3xl font-black text-rose-600 mt-2 font-mono">
+              -{loading ? '...' : totalReversed.toLocaleString()}
+              <span className="text-xs font-bold text-slate-400 ml-1">Coins</span>
+            </div>
+          </div>
+          <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-500 font-medium">
+            Reversed from cancelled or refunded orders.
           </div>
         </div>
       </div>
@@ -278,20 +280,21 @@ export const Wallet = () => {
             <table className="w-full text-left text-xs">
               <thead>
                 <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase text-[10px] tracking-wider bg-slate-50/50">
-                  <th className="py-3 px-4">Transaction Details</th>
-                  <th className="py-3 px-3">Type</th>
-                  <th className="py-3 px-3">Amount</th>
-                  <th className="py-3 px-3">Balance After</th>
-                  <th className="py-3 px-4 text-right">Date & Time</th>
+                  <th className="py-3 px-4">Date</th>
+                  <th className="py-3 px-4">Transaction</th>
+                  <th className="py-3 px-3 text-right">Fair Coins</th>
+                  <th className="py-3 px-4 text-center">Status</th>
+                  <th className="py-3 px-4 text-right">Balance After</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-700">
                 {transactions.map((tx) => {
                   const isDebit =
+                    tx.type === 'REDEEMED' ||
                     tx.type === 'DEBIT' ||
                     tx.type === 'EXPIRATION' ||
                     (typeof tx.amount === 'number' && tx.amount < 0);
-                  const isReversal = tx.status === 'REVERSED';
+                  const isReversal = tx.type === 'REVERSED' || tx.status === 'REVERSED';
                   const absAmount = Math.abs(Number(tx.amount) || 0);
 
                   const txDate = tx.createdAt ? new Date(tx.createdAt) : null;
@@ -312,46 +315,45 @@ export const Wallet = () => {
 
                   return (
                     <tr key={tx._id} className="hover:bg-slate-50/80 transition-colors">
-                      {/* Description & Reference */}
+                      {/* Date & Time */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <div className="text-slate-900 font-bold">{formattedDate}</div>
+                        {formattedTime && (
+                          <div className="text-[10px] text-slate-400">{formattedTime}</div>
+                        )}
+                      </td>
+
+                      {/* Transaction Description & Reference */}
                       <td className="py-3.5 px-4 font-semibold text-slate-900">
-                        <div>{tx.description || tx.source || 'Fair Coin Reward'}</div>
+                        <div>{tx.description || tx.source || 'Fair Coin Transaction'}</div>
                         {tx.referenceId && (
                           <div className="text-[10px] text-slate-400 font-mono mt-0.5">
-                            Ref: {tx.referenceId}
+                            Order/Ref: #{tx.referenceId}
                           </div>
                         )}
                       </td>
 
-                      {/* Type Badge */}
-                      <td className="py-3.5 px-3">{getTransactionBadge(tx)}</td>
-
-                      {/* Amount: positive for credit, negative for debit */}
+                      {/* Fair Coins Amount */}
                       <td
-                        className={`py-3.5 px-3 font-mono font-black ${
+                        className={`py-3.5 px-3 text-right font-mono font-black text-sm ${
                           isReversal
-                            ? 'text-purple-600 line-through'
-                            : isDebit
                             ? 'text-rose-600'
+                            : isDebit
+                            ? 'text-amber-800'
                             : 'text-emerald-600'
                         }`}
                       >
-                        {isDebit ? `-${absAmount}` : `+${absAmount}`}
-                        <span className="text-[10px] font-normal text-slate-400 ml-1">Coins</span>
+                        {isDebit || isReversal ? `-${absAmount}` : `+${absAmount}`}
                       </td>
 
+                      {/* Status */}
+                      <td className="py-3.5 px-4 text-center">{getTransactionBadge(tx)}</td>
+
                       {/* Balance After */}
-                      <td className="py-3.5 px-3 font-mono font-bold text-slate-900">
+                      <td className="py-3.5 px-4 text-right font-mono font-bold text-slate-900">
                         {tx.balanceAfter !== undefined && tx.balanceAfter !== null
                           ? Number(tx.balanceAfter).toLocaleString()
                           : '—'}
-                      </td>
-
-                      {/* Date & Time */}
-                      <td className="py-3.5 px-4 text-right">
-                        <div className="text-slate-700 font-medium">{formattedDate}</div>
-                        {formattedTime && (
-                          <div className="text-[10px] text-slate-400">{formattedTime}</div>
-                        )}
                       </td>
                     </tr>
                   );

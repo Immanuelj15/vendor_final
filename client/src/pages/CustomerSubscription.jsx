@@ -18,7 +18,9 @@ import {
   Tag,
   Zap,
   HelpCircle,
-  X
+  X,
+  Download,
+  FileText
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -33,6 +35,7 @@ export const CustomerSubscription = () => {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [downloadingSubId, setDownloadingSubId] = useState(null);
 
   // Checkout Modal State
   const [selectedPlan, setSelectedPlan] = useState(null);
@@ -150,6 +153,41 @@ export const CustomerSubscription = () => {
     fetchSubscriptionData();
   };
 
+  const handleDownloadInvoice = async (subId, planName = 'VIP_Pass') => {
+    if (!subId) return;
+    try {
+      setDownloadingSubId(subId);
+      const res = await api.get(`/customer/subscription/download-invoice/${subId}`, {
+        responseType: 'blob',
+      });
+
+      const blob = new Blob([res.data], { type: 'application/pdf' });
+      const fileUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = fileUrl;
+      const safePlan = String(planName || 'VIP').replace(/[^a-zA-Z0-9_-]/g, '_');
+      a.download = `Customer_Subscription_Invoice_${safePlan}_${String(subId).slice(-6)}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(fileUrl);
+      a.remove();
+    } catch (err) {
+      console.error('Invoice download failed:', err);
+      const token =
+        localStorage.getItem('fk_access_token') ||
+        localStorage.getItem('token') ||
+        localStorage.getItem('accessToken');
+      window.open(
+        `http://localhost:5000/api/customer/subscription/download-invoice/${subId}${
+          token ? `?token=${token}` : ''
+        }`,
+        '_blank'
+      );
+    } finally {
+      setDownloadingSubId(null);
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Hero Header with BAAPOO MART Branding */}
@@ -202,27 +240,44 @@ export const CustomerSubscription = () => {
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3 bg-white p-3 rounded-2xl border border-amber-200 shadow-xs">
-              <div className="px-3 py-1 text-center">
-                <span className="text-[10px] uppercase font-bold text-slate-400 block">Status</span>
-                <span className="text-xs font-black text-emerald-600 flex items-center gap-1 justify-center">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                  ACTIVE VIP
-                </span>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3 bg-white p-3 rounded-2xl border border-amber-200 shadow-xs">
+                <div className="px-3 py-1 text-center">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Status</span>
+                  <span className="text-xs font-black text-emerald-600 flex items-center gap-1 justify-center">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                    ACTIVE VIP
+                  </span>
+                </div>
+
+                <div className="h-8 w-px bg-slate-200" />
+
+                <div className="px-3 py-1 text-center">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Expires On</span>
+                  <span className="text-xs font-black text-[#30358F] font-mono">
+                    {new Date(currentSub.expiryDate || currentSub.expiresAt).toLocaleDateString('en-IN', {
+                      day: '2-digit',
+                      month: 'short',
+                      year: 'numeric'
+                    })}
+                  </span>
+                </div>
               </div>
 
-              <div className="h-8 w-px bg-slate-200" />
-
-              <div className="px-3 py-1 text-center">
-                <span className="text-[10px] uppercase font-bold text-slate-400 block">Expires On</span>
-                <span className="text-xs font-black text-[#30358F] font-mono">
-                  {new Date(currentSub.expiryDate || currentSub.expiresAt).toLocaleDateString('en-IN', {
-                    day: '2-digit',
-                    month: 'short',
-                    year: 'numeric'
-                  })}
-                </span>
-              </div>
+              <button
+                type="button"
+                onClick={() => handleDownloadInvoice(currentSub._id, currentSub.planNameSnapshot || currentSub.planId?.name)}
+                disabled={downloadingSubId === currentSub._id}
+                className="px-4 py-3 bg-[#30358F] hover:bg-[#20246a] text-white font-bold rounded-2xl text-xs flex items-center gap-2 shadow-md transition active:scale-98"
+                title="Download 18% GST Subscription Invoice PDF"
+              >
+                {downloadingSubId === currentSub._id ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-[#F7941D]" />
+                ) : (
+                  <Download className="w-4 h-4 text-[#F7941D]" />
+                )}
+                <span>Download Invoice</span>
+              </button>
             </div>
           </div>
         </motion.div>
@@ -403,6 +458,7 @@ export const CustomerSubscription = () => {
                   <th className="py-3 px-4">Started Date</th>
                   <th className="py-3 px-4">Expiry Date</th>
                   <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4 text-right">Invoice</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -432,6 +488,22 @@ export const CustomerSubscription = () => {
                         }`}>
                           {h.subscriptionStatus || h.status}
                         </span>
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadInvoice(h._id, planName)}
+                          disabled={downloadingSubId === h._id}
+                          className="px-3 py-1.5 bg-slate-100 hover:bg-[#30358F] text-slate-700 hover:text-white rounded-xl text-xs font-bold transition inline-flex items-center gap-1.5 shadow-2xs"
+                          title="Download 18% GST Subscription Invoice"
+                        >
+                          {downloadingSubId === h._id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Download className="w-3.5 h-3.5" />
+                          )}
+                          <span>PDF</span>
+                        </button>
                       </td>
                     </tr>
                   );

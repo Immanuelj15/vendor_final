@@ -185,28 +185,53 @@ export const cartService = {
     const cart = await Cart.findOne({ userId }).populate('items.productId');
     if (!cart) throw new ApiError(404, 'Cart not found', ERROR_CODES.NOT_FOUND);
 
-    if (quantity <= 0) {
-      cart.items = cart.items.filter(
-        (item) => !(item.productId._id.toString() === productId && item.variantSku === variantSku)
-      );
+    const targetPId = String(productId);
+    const targetSku = variantSku || '';
+
+    const matchItem = (item) => {
+      const pId = String(item.productId?._id || item.productId || '');
+      const sSku = item.variantSku || '';
+      return pId === targetPId && sSku === targetSku;
+    };
+
+    const newQty = Number(quantity);
+
+    if (newQty <= 0) {
+      cart.items = cart.items.filter((item) => !matchItem(item));
     } else {
-      const item = cart.items.find(
-        (item) => item.productId._id.toString() === productId && item.variantSku === variantSku
-      );
+      const item = cart.items.find(matchItem);
       if (!item) throw new ApiError(404, 'Cart item not found', ERROR_CODES.NOT_FOUND);
 
       const product = item.productId;
-      if (!product || product.status !== 'APPROVED') {
+      if (!product || !['APPROVED', 'ACTIVE'].includes(product.status)) {
         throw new ApiError(400, 'Product is no longer available', ERROR_CODES.BAD_REQUEST);
       }
 
-      const pricing = priceService.getEffectiveProductPrice(product, variantSku);
-      if (pricing.stock < quantity) {
+      const pricing = priceService.getEffectiveProductPrice(product, targetSku);
+      if (pricing.stock < newQty) {
         throw new ApiError(400, `Insufficient stock. Only ${pricing.stock} items available.`, ERROR_CODES.BAD_REQUEST);
       }
 
-      item.quantity = quantity;
+      item.quantity = newQty;
       item.price = pricing.sellingPrice;
+    }
+
+    // Re-verify coupon discount if items changed
+    if (cart.couponCode && cart.items.length > 0) {
+      try {
+        const validation = await couponService.validateCoupon({
+          code: cart.couponCode,
+          userId,
+          items: cart.items,
+        });
+        cart.discountAmount = validation.discountAmount;
+      } catch (_) {
+        cart.couponCode = null;
+        cart.discountAmount = 0;
+      }
+    } else if (cart.items.length === 0) {
+      cart.couponCode = null;
+      cart.discountAmount = 0;
     }
 
     await cart.save();
@@ -225,6 +250,16 @@ export const cartService = {
 
     cart.couponCode = validation.coupon.code;
     cart.discountAmount = validation.discountAmount;
+    await cart.save();
+    return this.getCart(userId);
+  },
+
+  async removeCoupon(userId) {
+    const cart = await Cart.findOne({ userId });
+    if (!cart) throw new ApiError(404, 'Cart not found', ERROR_CODES.NOT_FOUND);
+
+    cart.couponCode = null;
+    cart.discountAmount = 0;
     await cart.save();
     return this.getCart(userId);
   },

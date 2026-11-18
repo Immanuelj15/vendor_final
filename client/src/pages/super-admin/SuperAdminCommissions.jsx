@@ -86,9 +86,9 @@ export const SuperAdminCommissions = () => {
   const [payoutNotesInput, setPayoutNotesInput] = useState('');
   const [payoutSubmitting, setPayoutSubmitting] = useState(false);
 
-  // 3% Direct Vendor Referral Commissions state
+  // 10% Direct Vendor Referral Commissions state
   const [refOverview, setRefOverview] = useState({
-    commissionRate: 3,
+    commissionRate: 10,
     totalReferralPairs: 0,
     totalReferredSales: 0,
     totalReferralCommissions: 0,
@@ -122,7 +122,22 @@ export const SuperAdminCommissions = () => {
       }
       const res = await api.get('/admin/commissions/overview', { params });
       if (res.data?.data) {
-        setMetrics(res.data.data);
+        const payload = res.data.data;
+        const m = payload.metrics || payload;
+        setMetrics({
+          ...m,
+          totalVerifiedCustomerPayments: m.totalVerifiedCustomerPayments ?? 0,
+          totalVendorProductSales: m.totalVendorProductSales ?? m.totalEligibleProductSales ?? 0,
+          totalEligibleProductSales: m.totalEligibleProductSales ?? m.totalVendorProductSales ?? 0,
+          totalCommissionEarned: m.totalCommissionEarned ?? m.totalPlatformCommissionEarned ?? 0,
+          totalPlatformCommissionEarned: m.totalPlatformCommissionEarned ?? m.totalCommissionEarned ?? 0,
+          pendingVendorProceeds: m.pendingVendorProceeds ?? 0,
+          amountEligibleForPayout: m.amountEligibleForPayout ?? 0,
+          totalVendorPayoutsCompleted: m.totalVendorPayoutsCompleted ?? m.completedVendorPayouts ?? 0,
+          completedVendorPayouts: m.completedVendorPayouts ?? m.totalVendorPayoutsCompleted ?? 0,
+          failedOrHeldPayouts: m.failedOrHeldPayouts ?? 0,
+          totalRefundsReversals: m.totalRefundsReversals ?? 0,
+        });
       }
     } catch (err) {
       console.error('Failed to fetch commission overview:', err);
@@ -596,7 +611,7 @@ export const SuperAdminCommissions = () => {
             </div>
           </div>
           <div className="text-2xl font-extrabold text-slate-900">
-            ₹{Number(metrics.totalVendorPayoutsCompleted || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+            ₹{Number(metrics.totalVendorPayoutsCompleted || metrics.completedVendorPayouts || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
           </div>
           <span className="text-[11px] text-slate-500 mt-1 block">
             Confirmed payouts to vendor bank accounts
@@ -692,7 +707,7 @@ export const SuperAdminCommissions = () => {
             }`}
           >
             <Users className="w-4 h-4" />
-            <span>3% Vendor Referral Commission</span>
+            <span>10% Vendor Referral Commission</span>
           </button>
         </nav>
       </div>
@@ -1192,7 +1207,7 @@ export const SuperAdminCommissions = () => {
         </div>
       )}
 
-      {/* TAB 5: 3% Direct Vendor Referral Commission Management */}
+      {/* TAB 5: 10% Direct Vendor Referral Commission Management */}
       {activeTab === 'vendor-referrals' && (
         <div className="space-y-6">
           {/* Informational Policy Banner */}
@@ -1201,12 +1216,12 @@ export const SuperAdminCommissions = () => {
               <ShieldCheck className="w-5 h-5 text-emerald-600 mt-0.5 shrink-0" />
               <div className="text-xs text-slate-700 leading-relaxed space-y-1">
                 <strong className="text-emerald-950 font-bold block text-sm">
-                  Super Admin: Direct Vendor Referral Commission Management (3%)
+                  Super Admin: Direct Vendor Referral Commission Management (10%)
                 </strong>
                 <p>
                   Direct vendor referral commissions are <strong>completely separate from the platform's 5% Super Admin commission</strong>.
-                  When a vendor sells a product, 5% is allocated to the Super Admin platform, 3% is allocated to the vendor's direct referrer (if present),
-                  and the remaining 92% is allocated to the selling vendor. Referral commission payouts are strictly locked during the <strong>7-day holding period</strong> following confirmed delivery.
+                  When a vendor sells a product, 5% is allocated to the Super Admin platform, 10% is allocated to the vendor's direct referrer (if present),
+                  and the remaining 85% is allocated to the selling vendor. Referral commission payouts are directly distributed to the referring vendor's wallet balance.
                 </p>
               </div>
             </div>

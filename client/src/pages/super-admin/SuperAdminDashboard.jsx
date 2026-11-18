@@ -382,7 +382,7 @@ export const SuperAdminDashboard = () => {
               <p className="text-2xl font-black text-blue-900 font-mono">
                 ₹{(metrics?.superAdminProductSales || 0).toLocaleString('en-IN')}
               </p>
-              <p className="text-[11px] text-blue-600/80 mt-1">Direct FairKart product sales ({metrics?.superAdminProductItemsSold || 0} items sold)</p>
+              <p className="text-[11px] text-blue-600/80 mt-1">Direct Baapoo Mart product sales ({metrics?.superAdminProductItemsSold || 0} items sold)</p>
             </div>
           </div>
 

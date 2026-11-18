@@ -87,7 +87,7 @@ export const couponService = {
     if (fullSubtotal < coupon.minPurchase) {
       throw new ApiError(
         400,
-        `Minimum order value of ₹${(coupon.minPurchase / 100).toFixed(2)} is required to apply this coupon`,
+        `Minimum order value of ₹${Number(coupon.minPurchase).toFixed(2)} is required to apply this coupon`,
         ERROR_CODES.BAD_REQUEST
       );
     }

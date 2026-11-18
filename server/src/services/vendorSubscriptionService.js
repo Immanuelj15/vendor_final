@@ -137,6 +137,23 @@ export const vendorSubscriptionService = {
     // Link payment back to subscription
     payment.subscriptionId = subscription._id;
     await payment.save();
+
+    // Mark vendor as paid and approved
+    try {
+      const { Vendor } = await import('../models/Vendor.js');
+      await Vendor.findByIdAndUpdate(vendorId, {
+        isPaid: true,
+        paymentStatus: 'PAID',
+        status: 'APPROVED',
+        paidAmount: order.amount,
+        paymentDate: new Date(),
+        subscriptionId: subscription._id,
+        subscriptionPlan: order.planId?.name || '',
+        subscriptionExpiry: endDate,
+      });
+    } catch (vErr) {
+      console.warn('[vendorSubscriptionService] Vendor sync error:', vErr.message);
+    }
     
     // Distribute 10% Direct MLM Vendor Referral Commission to sponsor
     try {

@@ -48,7 +48,7 @@ export const Unauthorized = () => {
         </h2>
 
         <p className="text-xs text-slate-500 max-w-md mx-auto mb-6 leading-relaxed">
-          You do not have permission to view this section. FairKart enforces strict separation of responsibilities between Customers, Merchants/Vendors, and the Platform Super Admin.
+          You do not have permission to view this section. Baapoo Mart enforces strict separation of responsibilities between Customers, Merchants/Vendors, and the Platform Super Admin.
         </p>
 
         {isAuthenticated && user && (

@@ -1,10 +1,12 @@
 import { VendorSubscriptionPlan } from '../models/VendorSubscriptionPlan.js';
 import { VendorSubscription } from '../models/VendorSubscription.js';
+import { VendorSubscriptionInvoice } from '../models/VendorSubscriptionInvoice.js';
 import { SubscriptionPlan } from '../models/SubscriptionPlan.js';
 import { Subscription } from '../models/Subscription.js';
 import { Vendor } from '../models/Vendor.js';
 import { Payment } from '../models/Payment.js';
 import { mlmRewardService } from '../services/mlmRewardService.js';
+import { vendorSubscriptionInvoiceService } from '../services/vendorSubscriptionInvoiceService.js';
 import { ApiError } from '../utils/ApiError.js';
 import { ApiResponse } from '../utils/ApiResponse.js';
 import { ERROR_CODES } from '../constants/responseCodes.js';
@@ -614,6 +616,17 @@ export const getCurrentVendorSubscription = async (req, res, next) => {
       const diffMs = expTime - now.getTime();
       remainingDays = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
       isExpired = diffMs <= 0;
+
+      // Auto-heal vendor merchant status if currently subscribed and not expired
+      if (!isExpired && (!vendor.isPaid || vendor.paymentStatus !== 'PAID' || vendor.status !== 'APPROVED')) {
+        vendor.isPaid = true;
+        vendor.paymentStatus = 'PAID';
+        vendor.status = 'APPROVED';
+        vendor.subscriptionId = subscription._id;
+        vendor.subscriptionPlan = subscription.planNameSnapshot || subscription.planId?.name || '';
+        vendor.subscriptionExpiry = subscription.expiryDate || subscription.endDate;
+        await vendor.save();
+      }
     }
 
     return res.status(200).json(
@@ -736,6 +749,18 @@ export const checkoutVendorSubscription = async (req, res, next) => {
 
     await vendorSubscription.save();
 
+    // Mark vendor as paid and approved merchant upon activating subscription
+    vendor.isPaid = true;
+    vendor.paymentStatus = 'PAID';
+    vendor.paidAmount = finalAmount;
+    vendor.paymentDate = now;
+    vendor.paymentTransactionId = transactionId;
+    vendor.status = 'APPROVED';
+    vendor.subscriptionId = vendorSubscription._id;
+    vendor.subscriptionPlan = plan.name;
+    vendor.subscriptionExpiry = expiryDate;
+    await vendor.save();
+
     // Also sync with legacy Subscription model for full ecosystem compatibility
     try {
       const legacySub = new Subscription({
@@ -769,6 +794,14 @@ export const checkoutVendorSubscription = async (req, res, next) => {
       console.error('[VendorSubscription MLM Error]:', mlmErr.message);
     }
 
+    // Automatically generate official Vendor Subscription Invoice
+    let subscriptionInvoice = null;
+    try {
+      subscriptionInvoice = await vendorSubscriptionInvoiceService.generateSubscriptionInvoice(vendorSubscription._id);
+    } catch (invErr) {
+      console.error('[VendorSubscription Invoice Generation Error]:', invErr.message);
+    }
+
     return res.status(201).json(
       new ApiResponse(
         201,
@@ -777,6 +810,7 @@ export const checkoutVendorSubscription = async (req, res, next) => {
           transactionId,
           amountPaid: finalAmount,
           expiryDate,
+          invoice: subscriptionInvoice,
         },
         'Vendor subscription activated successfully!'
       )

@@ -94,6 +94,15 @@ const userSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    fairCoinReserved: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    welcomeCoinsAwarded: {
+      type: Boolean,
+      default: false,
+    },
     superCoinBalance: {
       type: Number,
       default: 0,

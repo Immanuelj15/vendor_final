@@ -21,3 +21,8 @@ export const applyCoupon = asyncWrapper(async (req, res) => {
   const cart = await cartService.applyCoupon(req.user._id, req.body.code);
   return res.status(200).json(new ApiResponse(200, { cart }, 'Coupon applied successfully'));
 });
+
+export const removeCoupon = asyncWrapper(async (req, res) => {
+  const cart = await cartService.removeCoupon(req.user._id);
+  return res.status(200).json(new ApiResponse(200, { cart }, 'Coupon removed successfully'));
+});

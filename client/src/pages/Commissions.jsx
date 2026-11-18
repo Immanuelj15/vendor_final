@@ -71,7 +71,7 @@ export const Commissions = () => {
                 </div>
                 <div>
                   <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">Page Earnings</p>
-                  <h3 className="text-2xl font-black text-slate-900">₹{(totalAmount / 100).toFixed(2)}</h3>
+                  <h3 className="text-2xl font-black text-slate-900">₹{Number(totalAmount).toFixed(2)}</h3>
                 </div>
               </div>
               <div className="bg-slate-50 border border-slate-200/80 p-5 rounded-2xl flex items-center gap-4 shadow-xs">
@@ -170,7 +170,7 @@ export const Commissions = () => {
                           {item.type?.replace(/_/g, ' ')}
                         </td>
                         <td className="p-4 font-black text-slate-900 text-base">
-                          ₹{(item.commissionAmount / 100).toFixed(2)}
+                          ₹{Number(item.commissionAmount).toFixed(2)}
                         </td>
                         <td className="p-4">
                           <span

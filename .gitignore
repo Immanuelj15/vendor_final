@@ -34,3 +34,5 @@ backups/
 *.tmp
 server/db-data/
 db-data/
+server/storage/
+storage/

@@ -19,7 +19,7 @@ export const ProtectedRoute = ({ children, allowedRoles }) => {
   const { isAuthenticated, user, isLoading } = useSelector((state) => state.auth);
   const location = useLocation();
 
-  if (isLoading) {
+  if (isLoading || (isAuthenticated && !user)) {
     return <RouteLoading />;
   }
 
@@ -39,7 +39,7 @@ export const CustomerRoute = ({ children }) => {
   const { isAuthenticated, user, isLoading } = useSelector((state) => state.auth);
   const location = useLocation();
 
-  if (isLoading) {
+  if (isLoading || (isAuthenticated && !user)) {
     return <RouteLoading />;
   }
 
@@ -60,7 +60,7 @@ export const VendorRoute = ({ children }) => {
   const { isAuthenticated, user, isLoading } = useSelector((state) => state.auth);
   const location = useLocation();
 
-  if (isLoading) {
+  if (isLoading || (isAuthenticated && !user)) {
     return <RouteLoading />;
   }
 
@@ -158,7 +158,7 @@ export const AdminRoute = ({ children }) => {
   const { isAuthenticated, user, isLoading } = useSelector((state) => state.auth);
   const location = useLocation();
 
-  if (isLoading) {
+  if (isLoading || (isAuthenticated && !user)) {
     return <RouteLoading />;
   }
 
@@ -178,7 +178,7 @@ export const SuperAdminRoute = ({ children }) => {
   const { isAuthenticated, user, isLoading } = useSelector((state) => state.auth);
   const location = useLocation();
 
-  if (isLoading) {
+  if (isLoading || (isAuthenticated && !user)) {
     return <RouteLoading />;
   }
 

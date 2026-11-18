@@ -9,6 +9,7 @@ import { ROLES, USER_STATUS } from '../constants/roles.js';
 import { ShopQRCode } from '../models/ShopQRCode.js';
 import { Shop } from '../models/Shop.js';
 import { CustomerShopAttribution } from '../models/CustomerShopAttribution.js';
+import { fairCoinService } from './fairCoinService.js';
 import mongoose from 'mongoose';
 
 import { CustomerProfile } from '../models/CustomerProfile.js';
@@ -209,6 +210,13 @@ export const authService = {
           vendorReferral.code,
           null
         );
+      }
+
+      // Initial Fair Coins Allocation: 500 Fair Coins welcome bonus for new customers
+      try {
+        await fairCoinService.creditWelcomeReward(user._id);
+      } catch (coinErr) {
+        console.error('[authService] Fair Coins welcome reward error:', coinErr);
       }
 
       // Fire MLM registration rewards (welcome bonus + upline coins)

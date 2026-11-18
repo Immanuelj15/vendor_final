@@ -15,6 +15,7 @@ import { territoryAccessService } from './territoryAccessService.js';
 import { kycService } from './kycService.js';
 import { subscriptionService } from './subscriptionService.js';
 import { shopActivationService } from './shopActivationService.js';
+import { notificationService } from './notificationService.js';
 import mongoose from 'mongoose';
 import crypto from 'crypto';
 
@@ -333,9 +334,11 @@ export const shopkeeperService = {
     const session = await mongoose.startSession();
     session.startTransaction();
 
+    let sk = null;
+
     try {
       if (status === 'ACTIVE') {
-        const sk = await Shopkeeper.findById(shop.shopkeeperId).session(session);
+        sk = await Shopkeeper.findById(shop.shopkeeperId).session(session);
         const franchise = await Franchise.findById(shop.talukFranchiseId).session(session);
         
         const isFranchiseActive = franchise && franchise.status === 'ACTIVE';
@@ -371,7 +374,7 @@ export const shopkeeperService = {
         await shop.save({ session });
 
         if (['INACTIVE', 'SUSPENDED', 'EXPIRED'].includes(status)) {
-          const sk = await Shopkeeper.findById(shop.shopkeeperId).session(session);
+          sk = await Shopkeeper.findById(shop.shopkeeperId).session(session);
           if (sk) {
             // Check if shopkeeper has other active shops
             const otherActiveShops = await Shop.findOne({

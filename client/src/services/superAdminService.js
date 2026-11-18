@@ -373,6 +373,50 @@ export const superAdminService = {
     const res = await api.delete(`/super-admin/categories/${id}`);
     return res.data?.data;
   },
+
+  // Fair Coins Management
+  getFairCoinsOverview: async () => {
+    const res = await api.get('/super-admin/fair-coins/overview');
+    return res.data?.data;
+  },
+  getFairCoinsCustomers: async (params = {}) => {
+    const res = await api.get('/super-admin/fair-coins/customers', { params });
+    return res.data?.data;
+  },
+  getFairCoinsTransactions: async (params = {}) => {
+    const res = await api.get('/super-admin/fair-coins/transactions', { params });
+    return res.data?.data;
+  },
+  getFairCoinsOrders: async (params = {}) => {
+    const res = await api.get('/super-admin/fair-coins/orders', { params });
+    return res.data?.data;
+  },
+
+  // Marketplace 5% Commission & 7-Day Vendor Payout Management
+  getMarketplaceMetrics: async () => {
+    const res = await api.get('/super-admin/marketplace/metrics');
+    return res.data?.data;
+  },
+  getMarketplaceCommissions: async (params = {}) => {
+    const res = await api.get('/super-admin/marketplace/commissions', { params });
+    return res.data?.data;
+  },
+  getMarketplacePayouts: async (params = {}) => {
+    const res = await api.get('/super-admin/marketplace/payouts', { params });
+    return res.data?.data;
+  },
+  releaseMarketplacePayout: async (id, data = {}) => {
+    const res = await api.post(`/super-admin/marketplace/payouts/${id}/release`, data);
+    return res.data?.data;
+  },
+  updateMarketplaceCommissionRate: async (commissionRate) => {
+    const res = await api.put('/super-admin/marketplace/commission-rate', { commissionRate });
+    return res.data?.data;
+  },
+  triggerMarketplaceEligibilityJob: async () => {
+    const res = await api.post('/super-admin/marketplace/trigger-eligibility');
+    return res.data?.data;
+  },
 };
 
 

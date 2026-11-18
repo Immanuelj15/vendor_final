@@ -165,7 +165,7 @@ export const SuperAdminProducts = () => {
             <div>
               <h1 className="text-2xl font-black text-slate-900 tracking-tight">Super Admin Product Control</h1>
               <p className="text-xs text-slate-500">
-                Full authority to create, edit, manage inventory, and sell products directly on FairKart.
+                Full authority to create, edit, manage inventory, and sell products directly on Baapoo Mart.
               </p>
             </div>
           </div>

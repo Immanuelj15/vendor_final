@@ -6,7 +6,7 @@ import { ShoppingBag, Coins, Trash2, ArrowRight, Tag, Loader2, X, Percent, Layou
 
 export const Cart = () => {
   const navigate = useNavigate();
-  const { user } = useSelector((state) => state.auth);
+  const { user, isAuthenticated } = useSelector((state) => state.auth);
   const [cart, setCart] = useState(null);
   const [loading, setLoading] = useState(true);
   const [coinsToUse, setCoinsToUse] = useState(0);
@@ -24,11 +24,17 @@ export const Cart = () => {
 
   useEffect(() => {
     fetchCart();
-  }, []);
+  }, [isAuthenticated]);
 
   const getItemKey = (item) => `${item.productId?._id}-${item.variantSku || ''}`;
 
   const fetchCart = async () => {
+    if (!isAuthenticated) {
+      setCart({ items: [] });
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await api.get('/cart');

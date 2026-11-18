@@ -4,7 +4,7 @@ const platformFinancialConfigSchema = new mongoose.Schema(
   {
     platformName: {
       type: String,
-      default: 'FairKart Global E-Commerce',
+      default: 'Baapoo Mart Marketplace',
       trim: true,
     },
     bankName: {
@@ -55,7 +55,7 @@ const platformFinancialConfigSchema = new mongoose.Schema(
     },
     defaultCommissionRate: {
       type: Number,
-      default: 10,
+      default: 5,
     },
     updatedBy: {
       type: mongoose.Schema.Types.ObjectId,

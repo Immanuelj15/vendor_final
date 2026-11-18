@@ -131,7 +131,7 @@ export const Login = () => {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder={activePortal === 'SUPER_ADMIN' ? 'admin@fairkart.dev' : 'name@example.com or +91 9876543210'}
+                placeholder={activePortal === 'SUPER_ADMIN' ? 'admin@baapoomart.com' : 'name@example.com or +91 9876543210'}
                 className="w-full bg-[#F7F7F9] text-xs text-slate-800 rounded-xl px-4 py-2.5 pl-10 border border-slate-200 focus:outline-none focus:border-[#ED1C2E] focus:bg-white transition-colors"
               />
               <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
@@ -182,7 +182,7 @@ export const Login = () => {
               type="button"
               onClick={() => {
                 setActivePortal('CUSTOMER');
-                setEmail('user@fairkart.dev');
+                setEmail('user@baapoomart.com');
                 setPassword('Password@123');
               }}
               className="px-2 py-1.5 rounded-lg bg-white border border-slate-200 hover:border-blue-400 text-[10px] font-bold text-slate-700 hover:text-blue-600 transition truncate shadow-2xs"
@@ -193,7 +193,7 @@ export const Login = () => {
               type="button"
               onClick={() => {
                 setActivePortal('VENDOR');
-                setEmail('vendor@fairkart.dev');
+                setEmail('vendor@baapoomart.com');
                 setPassword('Password@123');
               }}
               className="px-2 py-1.5 rounded-lg bg-white border border-slate-200 hover:border-amber-400 text-[10px] font-bold text-slate-700 hover:text-amber-600 transition truncate shadow-2xs"
@@ -204,7 +204,7 @@ export const Login = () => {
               type="button"
               onClick={() => {
                 setActivePortal('SUPER_ADMIN');
-                setEmail('admin@fairkart.dev');
+                setEmail('admin@baapoomart.com');
                 setPassword('Password@123');
               }}
               className="px-2 py-1.5 rounded-lg bg-white border border-slate-200 hover:border-red-400 text-[10px] font-bold text-slate-700 hover:text-red-600 transition truncate shadow-2xs"

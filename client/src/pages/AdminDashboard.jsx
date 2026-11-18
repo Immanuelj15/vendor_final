@@ -139,7 +139,7 @@ export const AdminDashboard = () => {
             <div className="inline-block px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-100 text-[10px] font-black uppercase tracking-wider mb-1 border border-blue-400/20">
               Operations Center
             </div>
-            <h1 className="text-2xl md:text-3xl font-black tracking-tight">FairKart Admin Operations</h1>
+            <h1 className="text-2xl md:text-3xl font-black tracking-tight">Baapoo Mart Admin Operations</h1>
             <p className="text-xs text-blue-100 mt-0.5">Track live platform transactions, vendor approvals & customer operational items</p>
           </div>
         </div>

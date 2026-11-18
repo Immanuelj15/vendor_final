@@ -55,7 +55,7 @@ const FAQS = [
   {
     id: 3,
     category: 'returns',
-    question: 'What is the FairKart return and refund policy?',
+    question: 'What is the Baapoo Mart return and refund policy?',
     answer:
       'We offer an easy 7-day return policy for eligible products. To initiate a return, go to "Orders" -> select your delivered order -> click "Request Return". Once the vendor approves and the courier picks up the parcel, your refund is credited directly to your original payment method or Fair Coins wallet.',
     link: '/customer/orders?tab=returns',
@@ -87,7 +87,7 @@ const FAQS = [
   {
     id: 7,
     category: 'vip',
-    question: 'What are the benefits of the FairKart VIP Pass?',
+    question: 'What are the benefits of the Baapoo Mart VIP Pass?',
     answer:
       'VIP Pass holders enjoy 2X Fair Coin multipliers on every purchase, zero delivery fees on orders above ₹199, daily bonus spins on Spin & Win, priority fulfillment, and exclusive access to flash sale discounts.',
     link: '/customer/subscription',
@@ -518,10 +518,10 @@ export const CustomerHelp = () => {
                 <p className="text-xs text-slate-500 mt-0.5">Send documents, invoices, or screenshots</p>
               </div>
               <a
-                href="mailto:support@fairkart.dev"
+                href="mailto:support@baapoomart.com"
                 className="text-xs font-bold text-blue-600 hover:underline block"
               >
-                support@fairkart.dev
+                support@baapoomart.com
               </a>
               <div className="text-[11px] text-slate-400">Average response time: &lt; 2 hours</div>
             </div>
@@ -530,10 +530,10 @@ export const CustomerHelp = () => {
             <div className="bg-slate-50 border border-slate-200/80 rounded-3xl p-5 space-y-2">
               <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
                 <Shield className="w-4 h-4 text-emerald-600" />
-                <span>FairKart Buyer Protection</span>
+                <span>Baapoo Mart Buyer Protection</span>
               </div>
               <p className="text-[11px] text-slate-500 leading-relaxed">
-                All marketplace transactions are protected by FairKart escrow guarantee. Full refunds are honored for unfulfilled or damaged goods.
+                All marketplace transactions are protected by Baapoo Mart escrow guarantee. Full refunds are honored for unfulfilled or damaged goods.
               </p>
             </div>
           </div>

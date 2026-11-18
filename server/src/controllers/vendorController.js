@@ -1,6 +1,9 @@
 import { vendorService } from '../services/vendorService.js';
 import { productService } from '../services/productService.js';
+import { Vendor } from '../models/Vendor.js';
 import { ApiResponse } from '../utils/ApiResponse.js';
+import { ApiError } from '../utils/ApiError.js';
+import { ERROR_CODES } from '../constants/responseCodes.js';
 import { asyncWrapper } from '../utils/asyncWrapper.js';
 
 export const registerVendor = asyncWrapper(async (req, res) => {
@@ -41,8 +44,12 @@ export const getVendorStatusHistory = asyncWrapper(async (req, res) => {
 });
 
 export const getVendorDashboard = asyncWrapper(async (req, res) => {
-  const vendorProfile = await vendorService.getVendorProfile(req.user._id);
-  const dashboardData = await vendorService.getVendorDashboard(vendorProfile._id);
+  let vendor = await Vendor.findOne({ userId: req.user._id });
+  if (!vendor && (req.user?.role === 'ADMIN' || req.user?.role === 'SUPER_ADMIN')) {
+    vendor = await Vendor.findOne();
+  }
+  if (!vendor) throw new ApiError(404, 'Vendor profile not found', ERROR_CODES.NOT_FOUND);
+  const dashboardData = await vendorService.getVendorDashboard(vendor._id);
   return res.status(200).json(new ApiResponse(200, dashboardData, 'Vendor dashboard retrieved'));
 });
 
@@ -166,7 +173,8 @@ export const changeVendorProductStatus = asyncWrapper(async (req, res) => {
 
 export const requestWithdrawal = asyncWrapper(async (req, res) => {
   const vendorProfile = await vendorService.getVendorProfile(req.user._id);
-  const withdrawal = await vendorService.requestWithdrawal(vendorProfile._id, req.body);
+  const vendorId = vendorProfile.vendor ? vendorProfile.vendor._id : vendorProfile._id;
+  const withdrawal = await vendorService.requestWithdrawal(vendorId, req.body);
   return res.status(201).json(new ApiResponse(201, { withdrawal }, 'Withdrawal request submitted'));
 });
 
@@ -194,6 +202,16 @@ export const getVendorOrderById = asyncWrapper(async (req, res) => {
   if (!order) {
     throw new (await import('../utils/ApiError.js')).ApiError(404, 'Order not found', 'NOT_FOUND');
   }
+
+  const orderObj = order.toObject();
+  if (order.parentOrderId) {
+    const { Order } = await import('../models/Order.js');
+    const parent = await Order.findById(order.parentOrderId);
+    if (parent) {
+      orderObj.shippingAddress = parent.shippingAddress || parent.deliveryAddressSnapshot;
+      orderObj.deliveryAddressSnapshot = parent.deliveryAddressSnapshot;
+    }
+  }
     
-  return res.status(200).json(new ApiResponse(200, { order }, 'Vendor order retrieved'));
+  return res.status(200).json(new ApiResponse(200, { order: orderObj }, 'Vendor order retrieved'));
 });

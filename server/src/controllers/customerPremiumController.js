@@ -1,6 +1,7 @@
 import { CustomerSubscriptionPlan } from '../models/CustomerSubscriptionPlan.js';
 import { CustomerSubscription } from '../models/CustomerSubscription.js';
 import { premiumService } from '../services/premiumService.js';
+import { customerSubscriptionInvoiceService } from '../services/customerSubscriptionInvoiceService.js';
 import { ApiResponse } from '../utils/ApiResponse.js';
 import { asyncWrapper } from '../utils/asyncWrapper.js';
 import { ApiError } from '../utils/ApiError.js';
@@ -198,5 +199,14 @@ export const getHistory = asyncWrapper(async (req, res) => {
     
   return res.status(200).json(new ApiResponse(200, { history }, 'Subscription history retrieved'));
 });
+
+export const downloadInvoice = asyncWrapper(async (req, res) => {
+  const targetId = req.params.subscriptionId || req.params.id;
+  if (!targetId) {
+    throw new ApiError(400, 'Subscription or Invoice ID is required', ERROR_CODES.BAD_REQUEST);
+  }
+  await customerSubscriptionInvoiceService.streamInvoicePdf(targetId, req.user, res);
+});
+
 
 

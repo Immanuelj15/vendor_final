@@ -33,7 +33,7 @@ export const SuperAdminSpinWheel = () => {
   const [availableProducts, setAvailableProducts] = useState([]);
   
   // Wheel State
-  const [title, setTitle] = useState('Daily FairKart Spin & Win');
+  const [title, setTitle] = useState('Daily Baapoo Mart Spin & Win');
   const [description, setDescription] = useState('Spin the wheel every day to win instant Fair Coins & Exclusive Products!');
   const [isActive, setIsActive] = useState(true);
   const [dailySpinsPerUser, setDailySpinsPerUser] = useState(1);
@@ -106,7 +106,7 @@ export const SuperAdminSpinWheel = () => {
     try {
       const data = await superAdminService.getSpinWheelConfig();
       if (data?.wheel) {
-        setTitle(data.wheel.title || 'Daily FairKart Spin & Win');
+        setTitle(data.wheel.title || 'Daily Baapoo Mart Spin & Win');
         setDescription(data.wheel.description || '');
         setIsActive(data.wheel.isActive !== false);
         setDailySpinsPerUser(data.wheel.dailySpinsPerUser || 1);

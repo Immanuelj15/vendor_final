@@ -36,8 +36,6 @@ import {
   getAdminSubscriptions,
   getAdminSubscriptionById,
   getExpiringSubscriptions,
-  getCommissions,
-  getCommissionById,
   getSettlements,
   getSettlementById,
   updateSettlementStatus,
@@ -136,6 +134,16 @@ import { runPaymentReconciliation } from '../controllers/reconciliationControlle
 import { getRoles, createRole, updateRole, getAdmins, createAdmin, updateAdmin } from '../controllers/adminManagementController.js';
 import { requirePermission } from '../middleware/permissionMiddleware.js';
 import { mutationLimiter } from '../middleware/rateLimiters.js';
+import {
+  getAdminCommissionOverview,
+  getAdminCommissionTransactions,
+  getAdminVendorCommissionsSummary,
+  getAdminProductCommissionsSummary,
+  getAdminSettlements,
+  approveAdminSettlement,
+  processAdminSettlementPayout,
+  exportAdminCommissionsCsv,
+} from '../controllers/platformCommissionController.js';
 
 const router = express.Router();
 
@@ -293,9 +301,15 @@ router.delete('/vendor-subscription-plans/:id', deleteAdminVendorSubscriptionPla
 // Vendor Subscriptions Ledger
 router.get('/vendor-subscriptions', getAdminVendorSubscriptionsLedger);
 
-// Commission Management
-router.get('/commissions', getCommissions);
-router.get('/commissions/:id', getCommissionById);
+// Fixed 5% Platform Commission & Vendor Settlements
+router.get('/commissions/overview', getAdminCommissionOverview);
+router.get('/commissions/vendors', getAdminVendorCommissionsSummary);
+router.get('/commissions/products', getAdminProductCommissionsSummary);
+router.get('/commissions/export', exportAdminCommissionsCsv);
+router.get('/commissions', getAdminCommissionTransactions);
+router.get('/platform-settlements', getAdminSettlements);
+router.post('/platform-settlements/:id/approve', approveAdminSettlement);
+router.post('/platform-settlements/:id/payout', processAdminSettlementPayout);
 
 // Settlement Management
 router.get('/settlements', getSettlements);
@@ -350,30 +364,6 @@ router.get('/analytics/deliveries', getDeliveryAnalytics);
 
 // Shop Attributions Logs
 router.get('/shop-attributions', getShopAttributions);
-
-// =========================================================================
-// Fixed 5% Platform Commission & Vendor Settlements
-// =========================================================================
-import {
-  getAdminCommissionOverview,
-  getAdminCommissionTransactions,
-  getAdminVendorCommissionsSummary,
-  getAdminProductCommissionsSummary,
-  getAdminSettlements,
-  approveAdminSettlement,
-  processAdminSettlementPayout,
-  exportAdminCommissionsCsv,
-} from '../controllers/platformCommissionController.js';
-
-router.get('/commissions/overview', getAdminCommissionOverview);
-router.get('/commissions/vendors', getAdminVendorCommissionsSummary);
-router.get('/commissions/products', getAdminProductCommissionsSummary);
-router.get('/commissions/export', exportAdminCommissionsCsv);
-router.get('/commissions', getAdminCommissionTransactions);
-router.get('/platform-settlements', getAdminSettlements);
-router.post('/platform-settlements/:id/approve', approveAdminSettlement);
-router.post('/platform-settlements/:id/payout', processAdminSettlementPayout);
-router.post('/settlements/:id/payout', processAdminSettlementPayout);
 
 // Additional 3% Direct Vendor Referral Commission Management
 import {

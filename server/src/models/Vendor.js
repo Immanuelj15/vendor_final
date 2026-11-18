@@ -46,6 +46,20 @@ const vendorSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    subscriptionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'VendorSubscription',
+      default: null,
+      index: true,
+    },
+    subscriptionPlan: {
+      type: String,
+      default: '',
+    },
+    subscriptionExpiry: {
+      type: Date,
+      default: null,
+    },
     currentAreaAssignment: { 
       type: mongoose.Schema.Types.ObjectId, 
       ref: 'VendorAreaAssignment',

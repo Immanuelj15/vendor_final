@@ -104,6 +104,31 @@ export const fulfillmentStatusService = {
             ERROR_CODES.FORBIDDEN
           );
         }
+      } else if (['CUSTOMER', 'USER'].includes(actor.role)) {
+        const { Order } = await import('../models/Order.js');
+        let orderQuery = Order.findById(fulfillment.orderId);
+        if (session) orderQuery = orderQuery.session(session);
+        const order = await orderQuery;
+        if (!order || order.userId.toString() !== actor._id.toString()) {
+          throw new ApiError(403, 'Access denied: You do not own this order', ERROR_CODES.FORBIDDEN);
+        }
+
+        // Allow Customer to cancel prior to dispatch
+        if (newStatus === 'CANCELLED') {
+          const cancellableStatuses = ['PENDING', 'PROCESSING', 'PICKED', 'PACKED', 'READY_FOR_DISPATCH'];
+          if (!cancellableStatuses.includes(oldStatus)) {
+            throw new ApiError(400, 'Order cannot be cancelled as it has already been dispatched', ERROR_CODES.BAD_REQUEST);
+          }
+        } else if (newStatus === 'RETURN_REQUESTED') {
+          // Allow customer to initiate return on delivered order
+          if (oldStatus !== 'DELIVERED') {
+            throw new ApiError(400, 'Return can only be requested for delivered orders', ERROR_CODES.BAD_REQUEST);
+          }
+        } else {
+          throw new ApiError(403, 'Access denied: Unauthorized status change', ERROR_CODES.FORBIDDEN);
+        }
+      } else if (actor.isSystem) {
+        // System automated status transition allowed
       } else {
         // Customer or standard user cannot transition directly
         throw new ApiError(403, 'Access denied: Unauthorized to change status', ERROR_CODES.FORBIDDEN);

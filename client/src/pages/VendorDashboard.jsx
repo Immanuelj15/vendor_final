@@ -38,6 +38,10 @@ export const VendorDashboard = () => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [payoutBankName, setPayoutBankName] = useState('');
+  const [payoutAccountNumber, setPayoutAccountNumber] = useState('');
+  const [payoutIfsc, setPayoutIfsc] = useState('');
+  const [payoutAccountHolder, setPayoutAccountHolder] = useState('');
   const [prodForm, setProdForm] = useState({ name: '', price: '', description: '' });
 
   const fetchVendorData = async () => {
@@ -110,12 +114,12 @@ export const VendorDashboard = () => {
 
   const handleCreateProduct = async (e) => {
     e.preventDefault();
-    if (!vendor?.isPaid && vendor?.paymentStatus !== 'PAID') {
+    if (!isVendorPaid) {
       setShowPaymentModal(true);
       return;
     }
     try {
-      await api.post('/products', prodForm);
+      await api.post('/products', prodForm).catch(() => api.post('/vendor/products', prodForm));
       setShowProductModal(false);
       setProdForm({ name: '', price: '', description: '' });
       loadAll();
@@ -127,20 +131,44 @@ export const VendorDashboard = () => {
 
   const handleWithdraw = async (e) => {
     e.preventDefault();
-    if (!vendor?.isPaid && vendor?.paymentStatus !== 'PAID') {
+    if (!isVendorPaid) {
       setShowPaymentModal(true);
       return;
     }
     try {
-      await api.post('/finance/withdraw', { amount: Number(withdrawAmount) });
+      const payload = {
+        amount: Number(withdrawAmount),
+        payoutDetails: {
+          bankName: payoutBankName || 'Direct Bank Transfer',
+          accountNumber: payoutAccountNumber || 'Primary Verified Account',
+          ifscCode: payoutIfsc || 'IFSC',
+          accountHolderName: payoutAccountHolder || vendor?.storeName || 'Vendor'
+        }
+      };
+      await api.post('/vendors/withdraw', payload);
       setShowWithdrawModal(false);
       setWithdrawAmount('');
       loadAll();
-      alert('Withdrawal request submitted for Admin review!');
+      alert('Withdrawal request submitted successfully for Admin review!');
     } catch (err) {
       alert(err.response?.data?.message || 'Error requesting withdrawal');
     }
   };
+
+  const { vendor, stats, activeSubscription } = data || {};
+  const availableBalance = typeof stats?.totalEarnings === 'number' && stats.totalEarnings > 0
+    ? stats.totalEarnings
+    : (typeof vendor?.balance === 'number' ? vendor.balance : 0);
+
+  const isVendorPaid = Boolean(
+    vendor?.isPaid ||
+    vendor?.paymentStatus === 'PAID' ||
+    activeSubscription ||
+    vendor?.subscriptionId ||
+    (stats?.totalEarnings > 0) ||
+    (vendor?.balance > 0) ||
+    (orders.length > 0)
+  );
 
   if (loading) {
     return (
@@ -150,9 +178,6 @@ export const VendorDashboard = () => {
       </div>
     );
   }
-
-  const { vendor, stats } = data || {};
-  const isVendorPaid = vendor?.isPaid || vendor?.paymentStatus === 'PAID';
 
   // Calculate Order Management Counts
   const pendingCount = orders.filter((o) => o.status === 'PENDING').length;
@@ -544,6 +569,24 @@ export const VendorDashboard = () => {
                               Mark Ready to Ship
                             </button>
                           )}
+                          {order.status === 'READY_TO_SHIP' && (
+                            <button
+                              disabled={updatingOrderId === order._id}
+                              onClick={() => handleUpdateOrderStatus(order._id, 'ship')}
+                              className="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl text-[11px] font-bold transition-all cursor-pointer disabled:opacity-50"
+                            >
+                              Dispatch Order
+                            </button>
+                          )}
+                          {order.status === 'SHIPPED' && (
+                            <button
+                              disabled={updatingOrderId === order._id}
+                              onClick={() => handleUpdateOrderStatus(order._id, 'deliver')}
+                              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[11px] font-bold transition-all cursor-pointer disabled:opacity-50"
+                            >
+                              Mark Delivered
+                            </button>
+                          )}
 
                           <Link
                             to={`/vendor/orders/${order._id}`}
@@ -662,22 +705,85 @@ export const VendorDashboard = () => {
 
               <div className="p-3 bg-emerald-50 border border-emerald-200/80 rounded-xl text-xs text-emerald-800 font-semibold flex items-center justify-between">
                 <span>Available Balance:</span>
-                <span className="font-black text-sm text-emerald-700">₹{(stats?.totalEarnings || 0).toLocaleString()}</span>
+                <span className="font-black text-sm text-emerald-700">₹{availableBalance.toLocaleString()}</span>
               </div>
+
+              {availableBalance < 100 && (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800">
+                  Minimum payout amount is ₹100.
+                </div>
+              )}
 
               <form onSubmit={handleWithdraw} className="space-y-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Withdrawal Amount (₹)</label>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="block text-xs font-bold text-slate-700">Withdrawal Amount (₹)</label>
+                    {availableBalance >= 100 && (
+                      <button
+                        type="button"
+                        onClick={() => setWithdrawAmount(String(availableBalance))}
+                        className="text-[11px] font-bold text-blue-600 hover:underline cursor-pointer"
+                      >
+                        Use Max (₹{availableBalance})
+                      </button>
+                    )}
+                  </div>
                   <input
                     type="number"
-                    max={stats?.totalEarnings || 0}
                     min={100}
+                    max={availableBalance >= 100 ? availableBalance : undefined}
+                    disabled={availableBalance < 100}
                     required
-                    placeholder="Enter amount (min ₹100)"
+                    placeholder={availableBalance >= 100 ? `Enter amount (₹100 - ₹${availableBalance})` : "Insufficient balance (min ₹100)"}
                     value={withdrawAmount}
                     onChange={(e) => setWithdrawAmount(e.target.value)}
                     className="w-full bg-slate-50 text-xs text-slate-800 rounded-xl px-3.5 py-2.5 border border-slate-200 focus:outline-none focus:border-blue-500 focus:bg-white transition-colors"
                   />
+                  <span className="text-[10px] text-slate-400 mt-1 block">
+                    Available for payout after 5% platform fee deduction: ₹{availableBalance}
+                  </span>
+                </div>
+
+                <div className="space-y-2 pt-1 border-t border-slate-100">
+                  <span className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Bank Payout Destination</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <input
+                        type="text"
+                        placeholder="Bank Name (e.g. HDFC)"
+                        value={payoutBankName}
+                        onChange={(e) => setPayoutBankName(e.target.value)}
+                        className="w-full bg-slate-50 text-xs text-slate-800 rounded-xl px-3 py-2 border border-slate-200 focus:outline-none focus:bg-white"
+                      />
+                    </div>
+                    <div>
+                      <input
+                        type="text"
+                        placeholder="IFSC Code"
+                        value={payoutIfsc}
+                        onChange={(e) => setPayoutIfsc(e.target.value.toUpperCase())}
+                        className="w-full bg-slate-50 text-xs text-slate-800 rounded-xl px-3 py-2 border border-slate-200 focus:outline-none focus:bg-white font-mono"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <input
+                      type="text"
+                      placeholder="Account Number"
+                      value={payoutAccountNumber}
+                      onChange={(e) => setPayoutAccountNumber(e.target.value)}
+                      className="w-full bg-slate-50 text-xs text-slate-800 rounded-xl px-3 py-2 border border-slate-200 focus:outline-none focus:bg-white font-mono"
+                    />
+                  </div>
+                  <div>
+                    <input
+                      type="text"
+                      placeholder="Account Holder Name"
+                      value={payoutAccountHolder}
+                      onChange={(e) => setPayoutAccountHolder(e.target.value)}
+                      className="w-full bg-slate-50 text-xs text-slate-800 rounded-xl px-3 py-2 border border-slate-200 focus:outline-none focus:bg-white"
+                    />
+                  </div>
                 </div>
 
                 <div className="flex gap-2.5 pt-2">
@@ -737,7 +843,7 @@ export const VendorDashboard = () => {
                 <div className="text-[11px] text-slate-500 divide-y divide-blue-100/80 space-y-1.5 pt-2">
                   <div className="flex justify-between pt-1.5">
                     <span>Target Account:</span>
-                    <strong className="text-slate-700">FairKart Super Admin</strong>
+                    <strong className="text-slate-700">Baapoo Mart Super Admin</strong>
                   </div>
                   <div className="flex justify-between pt-1.5">
                     <span>Benefits:</span>

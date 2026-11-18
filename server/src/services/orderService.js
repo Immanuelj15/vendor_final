@@ -24,7 +24,8 @@ import { platformCommissionService } from './platformCommissionService.js';
 export const orderService = {
   async createOrder(userId, { shippingAddressId, shippingAddress, paymentMethod = 'RAZORPAY', fairCoinsToRedeem = 0, selectedItemKeys = [] }) {
     // 0. Validate Fair Coins redemption limit and user ownership
-    const coinsNum = Number(fairCoinsToRedeem) || 0;
+    let coinsNum = Number(fairCoinsToRedeem) || 0;
+    let coinsReserved = false;
     if (isNaN(coinsNum) || coinsNum < 0 || !Number.isInteger(coinsNum)) {
       throw new ApiError(
         400,
@@ -34,24 +35,15 @@ export const orderService = {
     }
 
     if (coinsNum > 0) {
-      const userDoc = await User.findById(userId).select('fairCoinBalance');
+      const userDoc = await User.findById(userId).select('fairCoinBalance fairCoinReserved');
       if (!userDoc) {
         throw new ApiError(404, 'User not found', ERROR_CODES.NOT_FOUND);
       }
-      const availableBalance = userDoc.fairCoinBalance || 0;
+      const availableBalance = Math.max(0, (userDoc.fairCoinBalance || 0) - (userDoc.fairCoinReserved || 0));
       if (coinsNum > availableBalance) {
         throw new ApiError(
           400,
           `You cannot redeem more than your available balance of ${availableBalance} Fair Coins.`,
-          ERROR_CODES.BAD_REQUEST
-        );
-      }
-
-      const maxLimit = await fairCoinService.getMaxCoinsPerPurchase();
-      if (coinsNum > maxLimit) {
-        throw new ApiError(
-          400,
-          `You can use only ${maxLimit} Fair Coins per purchase. Please reduce the amount and try again.`,
           ERROR_CODES.BAD_REQUEST
         );
       }
@@ -246,12 +238,25 @@ export const orderService = {
         targetCouponId = validation.coupon._id;
       }
 
-      // 5. Handle Fair Coins redemption discount
+      // 5. Handle Fair Coins redemption discount (Fixed rate: 10 Fair Coins = ₹1)
       let coinDiscount = 0;
       if (coinsNum > 0) {
         const { FAIR_COIN_CONVERSION } = await import('../constants/coinConstants.js');
         const coinsPerRupee = FAIR_COIN_CONVERSION.COINS_PER_RUPEE; // 10
         coinDiscount = Math.floor(coinsNum / coinsPerRupee);
+
+        // Redemption validation: payable amount must never become negative
+        const netOrderValue = Math.max(0, itemsSubtotal - discountTotal);
+        if (coinDiscount > netOrderValue) {
+          coinDiscount = netOrderValue;
+          coinsNum = coinDiscount * coinsPerRupee;
+        }
+
+        // Reserve coins safely for online checkout to prevent concurrent orders from spending the same balance
+        if (paymentMethod !== 'COD' && coinsNum > 0) {
+          await fairCoinService.reserveCoins({ userId, amount: coinsNum });
+          coinsReserved = true;
+        }
       }
 
       const shippingTotal = 0; // Future module compatibility
@@ -313,14 +318,11 @@ export const orderService = {
         }
 
         if (coinsNum > 0) {
-          // Also might need session
-          await fairCoinService.debitCoins({
+          await fairCoinService.debitCoinsCod({
             userId,
             amount: coinsNum,
-            type: 'DEBIT',
-            source: 'ORDER_CHECKOUT_REDEMPTION',
-            description: `Redeemed ${coinsNum} Fair Coins for order discount`,
-            referenceId: orderNumber,
+            orderId: masterOrder._id,
+            orderNumber: masterOrder.orderNumber,
           });
         }
 
@@ -474,7 +476,7 @@ export const orderService = {
           try {
             const { fulfillmentService } = await import('./fulfillmentService.js');
             await fulfillmentService.createFulfillmentForOrder(masterOrder._id);
-            await fairCoinService.processPurchaseReward(userId, masterOrder.orderNumber, grandTotal);
+            await fairCoinService.processPurchaseReward(userId, masterOrder._id, masterOrder.orderNumber, masterOrder.items || items);
             await mlmRewardService.processPurchaseCommission(userId, masterOrder._id, grandTotal);
           } catch (e) {
             console.error('Background order tasks failed', e);
@@ -485,6 +487,13 @@ export const orderService = {
       return masterOrder;
 
     } catch (error) {
+      if (coinsReserved) {
+        try {
+          await fairCoinService.releaseReservedCoins({ userId, amount: coinsNum });
+        } catch (releaseErr) {
+          console.error('Failed to release reserved coins on order creation error:', releaseErr);
+        }
+      }
       if (inTransaction && session) {
         await session.abortTransaction();
         session.endSession();
@@ -674,5 +683,19 @@ export const orderService = {
     }
 
     throw new ApiError(403, 'Access denied: Unauthorized to update order status', ERROR_CODES.FORBIDDEN);
+  },
+
+  calculateMaxRedeemableCoins({ netPayableRupees = 0, availableCoins = 0, requestedCoins = 0 }) {
+    const coinsPerRupee = 10;
+    const maxDiscountAllowed = Math.floor(Math.max(0, netPayableRupees) * 0.50);
+    const maxCoinsAllowed = maxDiscountAllowed * coinsPerRupee;
+    const coinsToRedeem = Math.min(Math.max(0, requestedCoins), Math.max(0, availableCoins), maxCoinsAllowed);
+    const discountRupees = Math.floor(coinsToRedeem / coinsPerRupee);
+    return {
+      coinsToRedeem,
+      discountRupees,
+      maxCoinsAllowed,
+      maxDiscountAllowed
+    };
   },
 };

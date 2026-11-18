@@ -6,6 +6,7 @@ import { ApiResponse } from '../utils/ApiResponse.js';
 import { ERROR_CODES } from '../constants/responseCodes.js';
 import { fairCoinService } from '../services/fairCoinService.js';
 import { superCoinService } from '../services/superCoinService.js';
+import { customerSubscriptionInvoiceService } from '../services/customerSubscriptionInvoiceService.js';
 
 /**
  * Calendar month calculation helper
@@ -637,6 +638,11 @@ export const checkoutCustomerSubscription = async (req, res, next) => {
       planSnapshot: plan.toObject()
     });
 
+    // Auto-generate customer subscription invoice with 18% GST breakdown
+    customerSubscriptionInvoiceService.generateSubscriptionInvoice(subscription._id).catch((err) => {
+      console.warn('[checkoutCustomerSubscription] Background invoice generation warning:', err.message);
+    });
+
     // Credit promotional bonus coins if configured
     if (plan.rewardRules?.coinsOnSubscribe > 0) {
       try {
@@ -684,6 +690,22 @@ export const getCustomerSubscriptionHistory = async (req, res, next) => {
     return res.status(200).json(
       new ApiResponse(200, { history }, 'Subscription history retrieved successfully')
     );
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /api/customer/subscription/download-invoice/:subscriptionId
+ * Stream or download Customer Subscription PDF Invoice with 18% GST breakdown
+ */
+export const downloadCustomerSubscriptionInvoice = async (req, res, next) => {
+  try {
+    const targetId = req.params.subscriptionId || req.params.id;
+    if (!targetId) {
+      throw new ApiError(400, 'Subscription or Invoice ID is required', ERROR_CODES.BAD_REQUEST);
+    }
+    await customerSubscriptionInvoiceService.streamInvoicePdf(targetId, req.user, res);
   } catch (error) {
     next(error);
   }

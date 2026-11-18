@@ -72,7 +72,7 @@ export const emailService = {
 
       await this.sendEmail({
         to: user.email,
-        subject: `Payment Receipt — ₹${(payment.amount / 100).toFixed(2)}`,
+        subject: `Payment Receipt — ₹${Number(payment.amount).toFixed(2)}`,
         html,
       }, dedupeKey);
     } catch (err) {

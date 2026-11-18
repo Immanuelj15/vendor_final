@@ -20,6 +20,13 @@ export const getOrderById = asyncWrapper(async (req, res) => {
 
 export const getOrderInvoice = asyncWrapper(async (req, res) => {
   const { id } = req.params;
+  const invoices = await invoiceService.getInvoicesForOrder(id, req.user);
+  if (req.query.format === 'json') {
+    return res.status(200).json(new ApiResponse(200, { invoices }, 'Invoices retrieved'));
+  }
+  if (invoices.length > 0) {
+    return await invoiceService.streamInvoicePdf(invoices[0]._id, req.user, res);
+  }
   const { html, invoiceNumber } = await invoiceService.generateInvoiceHtml(id, req.user);
   
   if (req.query.format === 'json') {

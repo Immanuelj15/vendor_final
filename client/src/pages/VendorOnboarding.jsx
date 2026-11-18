@@ -583,7 +583,7 @@ export const VendorOnboarding = () => {
             <Store className="w-8 h-8" />
           </div>
           <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
-            {isInvitationMode ? 'Franchise Vendor Application & KYC' : 'Become a FairKart Merchant'}
+            {isInvitationMode ? 'Franchise Vendor Application & KYC' : 'Become a Baapoo Mart Merchant'}
           </h1>
           <p className="mt-2 text-slate-600 text-sm sm:text-base max-w-xl mx-auto">
             {isInvitationMode
