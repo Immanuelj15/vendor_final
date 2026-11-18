@@ -34,6 +34,8 @@ app.use(
       if (
         !origin ||
         /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin) ||
+        /\.vercel\.app$/.test(origin) ||
+        /\.onrender\.com$/.test(origin) ||
         allowedClientUrls.includes(origin) ||
         origin === env.CLIENT_URL
       ) {
