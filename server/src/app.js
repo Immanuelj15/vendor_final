@@ -78,6 +78,16 @@ app.use('/api', limiter);
 // Base API Routes
 app.use('/api', routes);
 
+// Root Welcome & Health Check Endpoint (For Render Probes & Browser Visitors)
+app.get('/', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Baapoo Mart Marketplace API is live and healthy 🚀',
+    environment: env.NODE_ENV,
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // 404 Handler
 app.use((req, res, next) => {
   next(new ApiError(404, `Route ${req.originalUrl} not found`, ERROR_CODES.NOT_FOUND));
