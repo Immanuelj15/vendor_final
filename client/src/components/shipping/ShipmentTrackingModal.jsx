@@ -190,7 +190,18 @@ export const ShipmentTrackingModal = ({ shipmentId, onClose }) => {
           </div>
 
           {/* Footer */}
-          <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex justify-end">
+          <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
+            {data?.shipment?.awbNumber ? (
+              <a
+                href={`https://www.delhivery.com/tracking?awb=${data.shipment.awbNumber}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs font-bold transition"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span>Track on Delhivery.com</span>
+              </a>
+            ) : <div />}
             <button
               onClick={onClose}
               className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-colors"

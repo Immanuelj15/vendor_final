@@ -459,7 +459,7 @@ export const shippingService = {
 
     try {
       const res = await delhiveryProvider.requestPickup(
-        shipment.pickupLocationName || 'Primary Warehouse',
+        shipment.pickupLocationName || 'BAAPOOMART',
         pickupDate,
         1
       );

@@ -209,7 +209,7 @@ export const delhiveryProvider = {
       customerEmail = '',
       customerPhone = '9999999999',
       deliveryAddress,
-      pickupLocation = 'Primary Warehouse',
+      pickupLocation = 'BAAPOOMART',
       items = [],
       weight = 0.5,
       length = 10,
@@ -288,7 +288,7 @@ export const delhiveryProvider = {
       // Soft-handling: AWB is reserved and valid on Delhivery system
     }
 
-    const trackingUrl = `https://www.delhivery.com/track/package/${waybill}`;
+    const trackingUrl = `https://www.delhivery.com/tracking?awb=${waybill}`;
     const labelUrl = `https://track.delhivery.com/api/p/packing_slip?wbns=${waybill}`;
 
     return {
@@ -314,7 +314,7 @@ export const delhiveryProvider = {
    */
   async assignAWB(shipmentId, courierCompanyId = null) {
     const waybill = await this.fetchWaybill();
-    const trackingUrl = `https://www.delhivery.com/track/package/${waybill}`;
+    const trackingUrl = `https://www.delhivery.com/tracking?awb=${waybill}`;
     const labelUrl = `https://track.delhivery.com/api/p/packing_slip?wbns=${waybill}`;
 
     return {
@@ -340,7 +340,7 @@ export const delhiveryProvider = {
       : new Date().toISOString().split('T')[0];
 
     const payload = {
-      pickup_location: String(pickupLocation || 'Primary Warehouse').trim(),
+      pickup_location: String(pickupLocation || 'BAAPOOMART').trim(),
       pickup_date: formattedDate,
       pickup_time: '14:00:00',
       expected_package_count: Math.max(1, parseInt(packageCount) || 1),
@@ -528,7 +528,7 @@ export const delhiveryProvider = {
       returnWaybill,
       awbNumber: returnWaybill,
       courierName: 'Delhivery Reverse Logistics',
-      trackingUrl: `https://www.delhivery.com/track/package/${returnWaybill}`,
+      trackingUrl: `https://www.delhivery.com/tracking?awb=${returnWaybill}`,
     };
   },
 
@@ -598,9 +598,9 @@ export const delhiveryProvider = {
   async listPickupLocations() {
     return [
       {
-        pickup_location: 'Primary Warehouse',
-        name: env.DELHIVERY_CLIENT_NAME || 'BAAPOO MART',
-        pin_code: '110001',
+        pickup_location: 'BAAPOOMART',
+        name: env.DELHIVERY_CLIENT_NAME || 'BAAPOO SUPER MARKET B2C',
+        pin_code: '600001',
       },
     ];
   },
