@@ -19,7 +19,7 @@ export const VendorPickupAddresses = () => {
             Vendor Pickup Locations
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Configure your warehouse and dispatch addresses synchronized with Shiprocket pickup points
+            Configure your warehouse and dispatch addresses synchronized with Delhivery pickup points
           </p>
         </div>
       </div>

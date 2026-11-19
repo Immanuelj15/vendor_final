@@ -144,7 +144,7 @@ export default function VendorPickupAddressManager() {
       case 'REGISTERED':
         return (
           <span className="inline-flex items-center gap-1 text-xs text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-            <CheckCircle2 className="w-3 h-3" /> Shiprocket Registered
+            <CheckCircle2 className="w-3 h-3" /> Delhivery Registered
           </span>
         );
       case 'PENDING':
@@ -183,7 +183,7 @@ export default function VendorPickupAddressManager() {
         <div>
           <h2 className="text-lg font-semibold text-slate-900">Pickup Addresses</h2>
           <p className="text-sm text-slate-500 mt-0.5">
-            Manage your pickup addresses for Shiprocket shipments.
+            Manage your pickup addresses for Delhivery shipments.
             Your default address will be used for all shipments unless overridden.
           </p>
         </div>
@@ -256,7 +256,7 @@ export default function VendorPickupAddressManager() {
                     {` • PIN: ${addr.pincode}`}
                   </p>
                   <p className="text-slate-500 text-sm">📞 {addr.phone}</p>
-                  <div className="mt-2">{getRegistrationBadge(addr.shiprocketRegistrationStatus)}</div>
+                  <div className="mt-2">{getRegistrationBadge(addr.delhiveryRegistrationStatus || addr.shiprocketRegistrationStatus)}</div>
                 </div>
               </div>
 
@@ -268,21 +268,21 @@ export default function VendorPickupAddressManager() {
                   <Edit2 className="w-3.5 h-3.5" />
                   Edit
                 </button>
-                {addr.shiprocketRegistrationStatus !== 'REGISTERED' && (
+                {(addr.delhiveryRegistrationStatus !== 'REGISTERED' && addr.shiprocketRegistrationStatus !== 'REGISTERED') && (
                   <button
                     onClick={async () => {
                       try {
                         const res = await api.post(`/shipping/vendor/addresses/${addr._id}/register`);
-                        alert(res.data?.message || 'Registered with Shiprocket successfully!');
+                        alert(res.data?.message || 'Registered with Delhivery successfully!');
                         fetchAddresses();
                       } catch (err) {
-                        alert(err.response?.data?.message || 'Failed to register with Shiprocket');
+                        alert(err.response?.data?.message || 'Failed to register with Delhivery');
                       }
                     }}
                     className="inline-flex items-center gap-1 text-xs text-blue-600 font-bold hover:text-blue-800 transition-colors ml-2"
                   >
                     <Package className="w-3.5 h-3.5" />
-                    Register with Shiprocket
+                    Register with Delhivery
                   </button>
                 )}
                 {!addr.isDefault && (

@@ -112,7 +112,7 @@ export const markReadyToShip = asyncWrapper(async (req, res) => {
   if (suborder.status !== 'PACKED') throw new ApiError(400, 'Only PACKED orders can be marked READY_TO_SHIP', ERROR_CODES.BAD_REQUEST);
 
   suborder.status = 'READY_TO_SHIP';
-  // Trigger Shiprocket shipment preparation
+  // Trigger Delhivery shipment preparation
   import('../services/shippingService.js')
     .then(({ shippingService }) => shippingService.createShipment(suborder._id, vendor._id))
     .catch((err) => console.warn('[Shipping] Auto-shipment notice:', err.message));
@@ -163,12 +163,12 @@ export const shipOrder = asyncWrapper(async (req, res) => {
 
       await ShipmentTrackingEvent.create({
         shipmentId: shipment._id,
-        provider: 'SHIPROCKET',
+        provider: 'DELHIVERY',
         providerEventId: 'evt_shipped_' + Date.now(),
         providerStatus: 'In Transit',
         internalStatus: 'IN_TRANSIT',
         location: 'Local Logistics Hub',
-        description: 'Parcel picked up by courier and in transit to customer delivery address',
+        description: 'Parcel picked up by Delhivery and in transit to customer delivery address',
         eventTime: new Date(),
       }).catch(() => {});
     }
@@ -210,12 +210,12 @@ export const deliverOrder = asyncWrapper(async (req, res) => {
 
       await ShipmentTrackingEvent.create({
         shipmentId: shipment._id,
-        provider: 'SHIPROCKET',
+        provider: 'DELHIVERY',
         providerEventId: 'evt_delivered_' + Date.now(),
         providerStatus: 'Delivered',
         internalStatus: 'DELIVERED',
         location: 'Destination Delivery Hub',
-        description: 'Parcel successfully delivered to customer',
+        description: 'Parcel successfully delivered to customer by Delhivery',
         eventTime: new Date(),
       }).catch(() => {});
     }

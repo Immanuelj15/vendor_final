@@ -392,7 +392,7 @@ export const VendorReturnsCancellations = () => {
               </button>
             </div>
             <p className="text-xs text-slate-600">
-              Approve {selectedRequest.requestType} for Order #{selectedRequest.orderNumber}. Reverse pickup logistics will be automatically booked with Shiprocket.
+              Approve {selectedRequest.requestType} for Order #{selectedRequest.orderNumber}. Reverse pickup logistics will be automatically booked with Delhivery.
             </p>
 
             <div className="space-y-3 text-xs">

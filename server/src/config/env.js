@@ -1,5 +1,10 @@
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -54,13 +59,17 @@ export const env = {
   RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID || 'rzp_test_demo',
   RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET || 'rzp_secret_demo',
   RAZORPAY_WEBHOOK_SECRET: process.env.RAZORPAY_WEBHOOK_SECRET || 'rzp_webhook_demo',
-  // ── Shiprocket Integration ────────────────────────────────────────────────
-  // Obtain these from your Shiprocket account:
-  // Settings → API → Add New API User
+  // ── Delhivery Logistics Integration ───────────────────────────────────────
+  DELHIVERY_API_KEY: process.env.DELHIVERY_API_KEY || '9a946879afaa206fc6372d0564cdb66226c134fc',
+  DELHIVERY_BASE_URL: process.env.DELHIVERY_BASE_URL || 'https://track.delhivery.com',
+  DELHIVERY_CLIENT_NAME: process.env.DELHIVERY_CLIENT_NAME || 'BAAPOO MART',
+  DELHIVERY_RETURN_NAME: process.env.DELHIVERY_RETURN_NAME || 'BAAPOO MART RETURNS',
+  DELHIVERY_WEBHOOK_SECRET: process.env.DELHIVERY_WEBHOOK_SECRET || '9a946879afaa206fc6372d0564cdb66226c134fc',
+
+  // ── Legacy Shiprocket (For backward compatibility) ────────────────────────
   SHIPROCKET_API_KEY: process.env.SHIPROCKET_API_KEY || '',
   SHIPROCKET_EMAIL: process.env.SHIPROCKET_EMAIL || '',
   SHIPROCKET_PASSWORD: process.env.SHIPROCKET_PASSWORD || process.env.SHIPROCKET_API_KEY || '',
   SHIPROCKET_BASE_URL: process.env.SHIPROCKET_BASE_URL || 'https://apiv2.shiprocket.in/v1/external',
-  // Webhook security token — set in Shiprocket dashboard (Settings → API → Webhooks)
-  SHIPROCKET_WEBHOOK_SECRET: process.env.SHIPROCKET_WEBHOOK_SECRET || process.env.SHIPROCKET_API_KEY || 'sr_webhook_demo',
+  SHIPROCKET_WEBHOOK_SECRET: process.env.SHIPROCKET_WEBHOOK_SECRET || 'sr_webhook_demo',
 };

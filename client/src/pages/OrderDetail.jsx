@@ -441,7 +441,7 @@ export const OrderDetail = () => {
               <Truck className="w-4 h-4 text-indigo-600" />
               <span>Shipment & Package Tracking ({shipments.length})</span>
             </h3>
-            <span className="text-xs text-slate-500 font-medium">Powered by Shiprocket Logistics</span>
+            <span className="text-xs text-slate-500 font-medium">Powered by Delhivery Logistics</span>
           </div>
 
           <div className="grid gap-3">
@@ -457,7 +457,7 @@ export const OrderDetail = () => {
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-xs font-black text-slate-900">
-                        {s.courierName || 'Shiprocket Partner Courier'}
+                        {s.courierName || 'Delhivery Express'}
                       </span>
                       <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-100 text-blue-700">
                         {s.status?.replace(/_/g, ' ') || 'PROCESSING'}
@@ -922,7 +922,7 @@ export const OrderDetail = () => {
         )}
       </AnimatePresence>
 
-      {/* Shiprocket Live Tracking Modal */}
+      {/* Delhivery Live Tracking Modal */}
       {selectedTrackingShipmentId && (
         <ShipmentTrackingModal
           shipmentId={selectedTrackingShipmentId}

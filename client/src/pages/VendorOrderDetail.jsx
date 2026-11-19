@@ -67,7 +67,7 @@ export const VendorOrderDetail = () => {
     try {
       setShippingActionLoading(true);
       await api.post(`/shipping/vendor/shipments/${shipment._id}/pickup`, {});
-      alert('Pickup scheduled successfully with Shiprocket!');
+      alert('Pickup scheduled successfully with Delhivery!');
       await fetchOrder();
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to schedule pickup');
@@ -281,12 +281,12 @@ export const VendorOrderDetail = () => {
             </div>
           </div>
 
-          {/* Shiprocket Logistics Card */}
+          {/* Delhivery Logistics Card */}
           <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-xs space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h2 className="text-base font-black text-slate-900 flex items-center gap-2">
                 <Truck className="w-4 h-4 text-indigo-600" />
-                <span>Shiprocket Logistics</span>
+                <span>Delhivery Logistics</span>
               </h2>
               {shipment && (
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-indigo-50 text-indigo-700 border border-indigo-200">
@@ -362,7 +362,7 @@ export const VendorOrderDetail = () => {
             ) : (
               <div className="space-y-3">
                 <p className="text-xs text-slate-500">
-                  No Shiprocket shipment generated for this suborder yet. It will automatically be created when marked Ready to Ship, or you can initiate it now.
+                  No Delhivery shipment generated for this suborder yet. It will automatically be created when marked Ready to Ship, or you can initiate it now.
                 </p>
                 <button
                   onClick={handleCreateShipment}
@@ -370,7 +370,7 @@ export const VendorOrderDetail = () => {
                   className="w-full py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition"
                 >
                   {shippingActionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Package className="w-3.5 h-3.5" />}
-                  <span>Create Shiprocket Shipment</span>
+                  <span>Create Delhivery Shipment</span>
                 </button>
               </div>
             )}

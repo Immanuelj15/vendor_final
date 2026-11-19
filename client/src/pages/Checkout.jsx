@@ -72,7 +72,7 @@ export const Checkout = () => {
   const [showMockModal, setShowMockModal] = useState(false);
   const [mockPaymentData, setMockPaymentData] = useState(null);
 
-  // Shiprocket Serviceability State
+  // Delhivery Serviceability State
   const [serviceability, setServiceability] = useState(null);
   const [checkingServiceability, setCheckingServiceability] = useState(false);
 
@@ -544,7 +544,7 @@ export const Checkout = () => {
             )}
           </div>
 
-          {/* Shipping & Delivery Options (Shiprocket Logistics) */}
+          {/* Shipping & Delivery Options (Delhivery Logistics) */}
           <div className="bg-white border border-slate-200/80 p-6 sm:p-7 rounded-3xl shadow-xs space-y-3.5">
             <h3 className="font-bold text-base text-slate-900 flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
@@ -552,7 +552,7 @@ export const Checkout = () => {
                 <span>Shipping & Delivery</span>
               </div>
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                Shiprocket Logistics
+                Delhivery Express
               </span>
             </h3>
 
@@ -579,7 +579,7 @@ export const Checkout = () => {
                   <strong className="text-slate-900 font-bold">
                     {serviceability.availableCouriers?.[0]?.estimatedDelivery || '2-4 business days'}
                   </strong>{' '}
-                  via Shiprocket partner couriers ({serviceability.availableCouriers?.length || 'Multiple'} carriers servicing PIN {address.zip}).
+                  via Delhivery Express network servicing PIN {address.zip}.
                 </p>
               </div>
             ) : address.zip && /^\d{6}$/.test(address.zip) ? (

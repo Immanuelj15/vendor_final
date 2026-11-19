@@ -76,7 +76,7 @@ export const ShipmentTrackingModal = ({ shipmentId, onClose }) => {
               </div>
               <div>
                 <h3 className="text-lg font-black text-slate-900 tracking-tight">Live Shipment Tracking</h3>
-                <p className="text-xs text-slate-500 mt-0.5">Real-time status via Shiprocket Logistics</p>
+                <p className="text-xs text-slate-500 mt-0.5">Real-time status via Delhivery Logistics</p>
               </div>
             </div>
             <button
@@ -92,7 +92,7 @@ export const ShipmentTrackingModal = ({ shipmentId, onClose }) => {
             {loading ? (
               <div className="py-16 flex flex-col items-center justify-center gap-3 text-slate-500">
                 <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-                <p className="text-sm font-semibold">Contacting Shiprocket tracking servers...</p>
+                <p className="text-sm font-semibold">Contacting Delhivery tracking servers...</p>
               </div>
             ) : error ? (
               <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-center gap-3 text-rose-700 text-sm">

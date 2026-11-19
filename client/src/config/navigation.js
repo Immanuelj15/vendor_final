@@ -246,7 +246,7 @@ export const superAdminNavGroups = [
       { name: 'Products Catalog', path: '/super-admin/products', icon: Package },
       { name: 'Product Approvals', path: '/super-admin/products/review', icon: ShieldCheck },
       { name: 'Fulfillment Dashboard', path: '/super-admin/fulfillment', icon: Boxes },
-      { name: 'Shiprocket Logistics Hub', path: '/super-admin/shipping', icon: Truck, highlight: true },
+      { name: 'Delhivery Logistics Hub', path: '/super-admin/shipping', icon: Truck, highlight: true },
       { name: 'Returns, Refunds & Policies', path: '/super-admin/returns', icon: RotateCcw, highlight: true },
       { name: 'Subscription Monitoring Overview', path: '/super-admin/subscriptions', icon: Layers },
       { name: 'Vendor Subscription Management', path: '/super-admin/vendor-subscriptions', icon: CreditCard },

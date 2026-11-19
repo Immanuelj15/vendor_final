@@ -1,16 +1,17 @@
 /**
- * Complete Shiprocket Shipping Service — Production Implementation
+ * Delhivery Logistics Shipping Service — Production Implementation
  *
- * Handles the full logistics lifecycle:
- *  1. Serviceability & rate comparison check
- *  2. Order/shipment creation in Shiprocket (idempotent, deduplicated)
- *  3. AWB assignment (specific courier selection or optimal recommendation)
- *  4. Pickup scheduling
- *  5. Label & Manifest generation
- *  6. Live tracking & timeline milestones
- *  7. Webhook processing (with authentication, idempotency, non-regressive state machine)
- *  8. Cancellation & return order management
- *  9. Master order status roll-up
+ * Handles the complete logistics lifecycle using Delhivery Express:
+ *  1. Pincode serviceability & express rate calculation
+ *  2. Order & shipment creation in Delhivery (idempotent, deduplicated)
+ *  3. Waybill assignment & courier dispatch
+ *  4. Warehouse pickup scheduling
+ *  5. Packing slip & shipping label generation
+ *  6. Manifest generation
+ *  7. Live tracking & real-time milestone sync
+ *  8. Webhook processing (with authentication & deduplication)
+ *  9. Cancellation & reverse logistics returns
+ *  10. Master order status roll-up
  */
 
 import { Shipment } from '../models/Shipment.js';
@@ -19,9 +20,9 @@ import { Order } from '../models/Order.js';
 import { Product } from '../models/Product.js';
 import { ShipmentTrackingEvent } from '../models/ShipmentTrackingEvent.js';
 import { ShippingException } from '../models/ShippingException.js';
-import { ShiprocketWebhookEvent } from '../models/ShiprocketWebhookEvent.js';
-import { shiprocketProvider } from './courier/shiprocketProvider.js';
-import { shiprocketPickupService } from './shiprocketPickupService.js';
+import { DelhiveryWebhookEvent } from '../models/DelhiveryWebhookEvent.js';
+import { delhiveryProvider } from './courier/delhiveryProvider.js';
+import { delhiveryPickupService } from './delhiveryPickupService.js';
 import { ApiError } from '../utils/ApiError.js';
 import { ERROR_CODES } from '../constants/responseCodes.js';
 import { env } from '../config/env.js';
@@ -58,7 +59,7 @@ export const STATUS_PRIORITY = [
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /**
- * Normalize weight to KG (Shiprocket expects KG).
+ * Normalize weight to KG
  */
 function normalizeWeightToKg(weight, unit = 'KG') {
   const w = parseFloat(weight) || 0;
@@ -114,9 +115,9 @@ async function calculateShipmentDimensions(items) {
 }
 
 /**
- * Build Shiprocket order items array from VendorOrder items.
+ * Build order items array from VendorOrder items.
  */
-function buildShiprocketItems(items) {
+function buildShipmentItems(items) {
   return items.map((item) => ({
     name: item.productNameSnapshot || item.name || 'Product',
     sku: item.skuSnapshot || item.variantSku || String(item.productId),
@@ -154,7 +155,7 @@ export const shippingService = {
   // ────────────────────────────────────────────────────────────────────────────
 
   /**
-   * Check courier serviceability for a vendor suborder.
+   * Check Delhivery courier serviceability for a vendor suborder.
    */
   async checkServiceability(suborderId, vendorId) {
     const suborder = await VendorOrder.findOne({ _id: suborderId, vendorId });
@@ -163,13 +164,13 @@ export const shippingService = {
     const masterOrder = await Order.findById(suborder.parentOrderId);
     if (!masterOrder) throw new ApiError(404, 'Master order not found', ERROR_CODES.NOT_FOUND);
 
-    const originAddress = await shiprocketPickupService.getDefaultPickupAddress(vendorId);
+    const originAddress = await delhiveryPickupService.getDefaultPickupAddress(vendorId);
     const destAddr = extractDeliveryAddress(masterOrder.deliveryAddressSnapshot);
 
     const { totalKg, missingWeight } = await calculateShipmentWeight(suborder.items);
     const isCOD = masterOrder.paymentMethod === 'COD';
 
-    const serviceability = await shiprocketProvider.getServiceability(
+    const serviceability = await delhiveryProvider.getServiceability(
       originAddress.pincode,
       destAddr.postalCode,
       totalKg,
@@ -182,11 +183,12 @@ export const shippingService = {
       missingWeightProducts: missingWeight,
       originPincode: originAddress.pincode,
       destinationPincode: destAddr.postalCode,
+      courierProvider: 'DELHIVERY',
     };
   },
 
   /**
-   * Check available couriers and rates for an existing shipment before AWB assignment.
+   * Check available Delhivery couriers and rates for an existing shipment before AWB assignment.
    */
   async getAvailableCouriersForShipment(shipmentId, vendorId = null) {
     const query = { _id: shipmentId };
@@ -208,7 +210,7 @@ export const shippingService = {
       throw new ApiError(400, 'Origin or destination PIN code missing on shipment snapshot', ERROR_CODES.BAD_REQUEST);
     }
 
-    return shiprocketProvider.getServiceability(
+    return delhiveryProvider.getServiceability(
       originPincode,
       destPincode,
       shipment.packageWeight || 0.5,
@@ -221,7 +223,7 @@ export const shippingService = {
   // ────────────────────────────────────────────────────────────────────────────
 
   /**
-   * Create a Shiprocket shipment for a vendor suborder.
+   * Create a Delhivery shipment for a vendor suborder.
    */
   async createShipment(suborderId, vendorId, options = {}) {
     const suborder = await VendorOrder.findOne({ _id: suborderId, vendorId });
@@ -263,18 +265,18 @@ export const shippingService = {
       throw new ApiError(400, 'Customer delivery address is missing street address', ERROR_CODES.BAD_REQUEST);
     }
 
-    // Get vendor pickup address and register in Shiprocket
-    const originAddress = await shiprocketPickupService.getDefaultPickupAddress(vendorId);
-    const pickupLocationName = await shiprocketPickupService.ensurePickupLocation(vendorId, originAddress);
+    // Get vendor pickup address and register in Delhivery
+    const originAddress = await delhiveryPickupService.getDefaultPickupAddress(vendorId);
+    const pickupLocationName = await delhiveryPickupService.ensurePickupLocation(vendorId, originAddress);
 
-    // Calculate dimensions and weight (supports vendor overrides during packing)
+    // Calculate dimensions and weight
     const { totalKg: calculatedWeight } = await calculateShipmentWeight(suborder.items);
     const calculatedDim = await calculateShipmentDimensions(suborder.items);
-    
+
     const finalWeight = options?.weight ? Math.max(0.01, parseFloat(options.weight)) : calculatedWeight;
     const finalLength = options?.length ? Math.max(0.5, parseFloat(options.length)) : calculatedDim.length;
     const finalBreadth = (options?.breadth || options?.width) ? Math.max(0.5, parseFloat(options?.breadth || options?.width)) : calculatedDim.breadth;
-    const finalHeight = options?.height ? Math.max(0.5, parseFloat(options?.height)) : calculatedDim.height;
+    const finalHeight = options?.height ? Math.max(0.5, parseFloat(options.height)) : calculatedDim.height;
 
     // Calculate COD amount for this suborder
     let codAmount = 0;
@@ -282,8 +284,8 @@ export const shippingService = {
       codAmount = suborder.grandTotal + (suborder.shippingTotal || 0);
     }
 
-    // Unique order reference for Shiprocket
-    const srOrderRef = `BM-${suborder.subOrderNumber || suborder.publicSuborderId || suborderId}`;
+    // Unique order reference for Delhivery
+    const dlOrderRef = `BM-${suborder.subOrderNumber || suborder.publicSuborderId || suborderId}`;
 
     // Draft local record to prevent race conditions
     let shipment = existingShipment;
@@ -292,8 +294,8 @@ export const shippingService = {
         suborderId,
         vendorId,
         parentOrderId: masterOrder._id,
-        courierProvider: 'SHIPROCKET',
-        courierOrderId: srOrderRef,
+        courierProvider: 'DELHIVERY',
+        courierOrderId: dlOrderRef,
         originAddressSnapshot: originAddress.toObject ? originAddress.toObject() : originAddress,
         destinationAddressSnapshot: masterOrder.deliveryAddressSnapshot,
         pickupLocationName,
@@ -308,19 +310,19 @@ export const shippingService = {
       });
     }
 
-    shipment.shiprocketCreationAttempts = (shipment.shiprocketCreationAttempts || 0) + 1;
+    shipment.creationAttempts = (shipment.creationAttempts || 0) + 1;
     shipment.lastCreationAttemptAt = new Date();
 
     try {
-      const srResult = await shiprocketProvider.createOrder({
-        orderNumber: srOrderRef,
+      const dlResult = await delhiveryProvider.createOrder({
+        orderNumber: dlOrderRef,
         orderDate: masterOrder.createdAt?.toISOString()?.split('T')[0] || new Date().toISOString().split('T')[0],
         customerName: deliveryAddr.name || 'Customer',
         customerEmail: deliveryAddr.email || '',
         customerPhone: deliveryAddr.phone || '9999999999',
         deliveryAddress: deliveryAddr,
         pickupLocation: pickupLocationName,
-        items: buildShiprocketItems(suborder.items),
+        items: buildShipmentItems(suborder.items),
         weight: finalWeight,
         length: finalLength,
         breadth: finalBreadth,
@@ -331,37 +333,46 @@ export const shippingService = {
         shippingCharge: suborder.shippingTotal || 0,
       });
 
-      if (!srResult.success) {
-        throw new Error(srResult.rawResponse?.message || 'Shiprocket order creation was not successful');
+      if (!dlResult.success) {
+        throw new Error(dlResult.rawResponse?.message || 'Delhivery shipment creation was not successful');
       }
 
-      shipment.shiprocketOrderId = srResult.shiprocketOrderId;
-      shipment.shiprocketShipmentId = srResult.shiprocketShipmentId;
+      shipment.delhiveryWaybill = dlResult.awbNumber;
+      shipment.awbNumber = dlResult.awbNumber;
+      shipment.courierName = dlResult.courierName || 'Delhivery Express';
+      shipment.trackingUrl = dlResult.trackingUrl;
+      shipment.labelUrl = dlResult.labelUrl;
       shipment.status = 'CREATED';
+      // Compatibility fields
+      shipment.shiprocketOrderId = dlResult.awbNumber;
+      shipment.shiprocketShipmentId = dlResult.awbNumber;
       await shipment.save();
 
       suborder.status = 'SHIPMENT_CREATED';
       await suborder.save();
 
-      // Auto-assign AWB if preferred courier was provided
-      if (options.courierCompanyId && srResult.shiprocketShipmentId) {
-        try {
-          await this.assignAWB(shipment._id.toString(), vendorId, options.courierCompanyId);
-        } catch (awbErr) {
-          console.warn('[Shipping] AWB auto-assignment deferred:', awbErr.message);
-        }
-      }
+      // Record tracking creation event
+      await ShipmentTrackingEvent.create({
+        shipmentId: shipment._id,
+        provider: 'DELHIVERY',
+        providerEventId: `create_${dlResult.awbNumber}`,
+        providerStatus: 'Manifest Created',
+        internalStatus: 'CREATED',
+        location: originAddress.cityName || originAddress.city || 'Vendor Warehouse',
+        description: `Shipment created via Delhivery Express (AWB: ${dlResult.awbNumber})`,
+        eventTime: new Date(),
+      }).catch(() => {});
 
-      console.log(`[Shipping] Shipment created for suborder ${suborderId}. SR Order: ${srResult.shiprocketOrderId}`);
+      console.log(`[Shipping] Delhivery shipment created for suborder ${suborderId}. AWB: ${dlResult.awbNumber}`);
       return shipment;
 
     } catch (error) {
       await ShippingException.create({
         shipmentId: shipment._id,
-        provider: 'SHIPROCKET',
+        provider: 'DELHIVERY',
         errorCode: error.statusCode ? String(error.statusCode) : 'CREATION_FAILED',
-        errorMessage: error.message || 'Shiprocket order creation failed',
-        requestReference: srOrderRef,
+        errorMessage: error.message || 'Delhivery order creation failed',
+        requestReference: dlOrderRef,
       }).catch(() => {});
 
       shipment.status = 'DRAFT';
@@ -369,7 +380,7 @@ export const shippingService = {
 
       throw new ApiError(
         502,
-        `Failed to create Shiprocket shipment: ${error.message}`,
+        `Failed to create Delhivery shipment: ${error.message}`,
         ERROR_CODES.INTERNAL_ERROR
       );
     }
@@ -386,52 +397,34 @@ export const shippingService = {
     const shipment = await Shipment.findOne(query);
     if (!shipment) throw new ApiError(404, 'Shipment not found', ERROR_CODES.NOT_FOUND);
 
-    if (!shipment.shiprocketShipmentId) {
-      throw new ApiError(400, 'Shipment does not have a Shiprocket Shipment ID yet', ERROR_CODES.BAD_REQUEST);
-    }
-
     if (shipment.awbNumber) {
       return shipment; // Already assigned
     }
 
-    // If no courierCompanyId is specified, check serviceability to pick best available courier
-    let resolvedCourierId = courierCompanyId;
-    if (!resolvedCourierId) {
-      try {
-        const serv = await this.getAvailableCouriersForShipment(shipment._id, vendorId);
-        if (serv?.availableCouriers?.length > 0) {
-          resolvedCourierId = serv.availableCouriers[0].id;
-        }
-      } catch (servErr) {
-        console.warn('[Shipping] Could not fetch optimal courier recommendation, proceeding with standard courier:', servErr.message);
-      }
-    }
-
     try {
-      const result = await shiprocketProvider.assignAWB(
-        shipment.shiprocketShipmentId,
-        resolvedCourierId
-      );
+      const result = await delhiveryProvider.assignAWB(shipment._id.toString(), courierCompanyId);
 
       if (!result.success || !result.awbNumber) {
-        throw new Error(result.rawResponse?.message || 'AWB assignment failed');
+        throw new Error('Delhivery AWB assignment failed');
       }
 
       shipment.awbNumber = result.awbNumber;
-      shipment.courierName = result.courierName || '';
-      shipment.courierCompanyId = result.courierCompanyId || resolvedCourierId;
-      shipment.trackingUrl = result.trackingUrl || `https://shiprocket.co/tracking/${result.awbNumber}`;
+      shipment.delhiveryWaybill = result.awbNumber;
+      shipment.courierName = result.courierName || 'Delhivery Express';
+      shipment.courierCompanyId = result.courierCompanyId || 101;
+      shipment.trackingUrl = result.trackingUrl;
+      shipment.labelUrl = result.labelUrl;
       shipment.status = 'AWB_ASSIGNED';
       await shipment.save();
 
       await ShipmentTrackingEvent.create({
         shipmentId: shipment._id,
-        provider: 'SHIPROCKET',
+        provider: 'DELHIVERY',
         providerEventId: `awb_${result.awbNumber}`,
         providerStatus: 'AWB Assigned',
         internalStatus: 'AWB_ASSIGNED',
         location: '',
-        description: `AWB ${result.awbNumber} assigned via ${result.courierName || 'Shiprocket Courier'}`,
+        description: `AWB ${result.awbNumber} assigned via Delhivery Express`,
         eventTime: new Date(),
       }).catch(() => {});
 
@@ -439,7 +432,7 @@ export const shippingService = {
     } catch (error) {
       await ShippingException.create({
         shipmentId: shipment._id,
-        provider: 'SHIPROCKET',
+        provider: 'DELHIVERY',
         errorCode: 'AWB_FAILED',
         errorMessage: error.message,
         requestReference: `shipment:${shipmentId}`,
@@ -464,22 +457,11 @@ export const shippingService = {
       return shipment;
     }
 
-    if (!['CREATED', 'AWB_ASSIGNED'].includes(shipment.status)) {
-      throw new ApiError(
-        400,
-        `Shipment must be in CREATED or AWB_ASSIGNED status to schedule pickup. Current: ${shipment.status}`,
-        ERROR_CODES.BAD_REQUEST
-      );
-    }
-
-    if (!shipment.shiprocketShipmentId) {
-      throw new ApiError(400, 'Shiprocket Shipment ID is missing. Cannot schedule pickup.', ERROR_CODES.BAD_REQUEST);
-    }
-
     try {
-      const res = await shiprocketProvider.requestPickup(
-        shipment.shiprocketShipmentId,
-        pickupDate
+      const res = await delhiveryProvider.requestPickup(
+        shipment.pickupLocationName || 'Primary Warehouse',
+        pickupDate,
+        1
       );
 
       shipment.status = 'PICKUP_REQUESTED';
@@ -495,11 +477,22 @@ export const shippingService = {
         await suborder.save();
       }
 
+      await ShipmentTrackingEvent.create({
+        shipmentId: shipment._id,
+        provider: 'DELHIVERY',
+        providerEventId: `pickup_${Date.now()}`,
+        providerStatus: 'Pickup Requested',
+        internalStatus: shipment.status,
+        location: '',
+        description: `Delhivery pickup scheduled. Token: ${res.pickupToken}`,
+        eventTime: new Date(),
+      }).catch(() => {});
+
       return shipment;
     } catch (error) {
       await ShippingException.create({
         shipmentId: shipment._id,
-        provider: 'SHIPROCKET',
+        provider: 'DELHIVERY',
         errorCode: 'PICKUP_FAILED',
         errorMessage: error.message,
         requestReference: `shipment:${shipmentId}`,
@@ -520,18 +513,19 @@ export const shippingService = {
     const shipment = await Shipment.findOne(query);
     if (!shipment) throw new ApiError(404, 'Shipment not found', ERROR_CODES.NOT_FOUND);
 
-    if (!shipment.shiprocketShipmentId) {
-      throw new ApiError(400, 'No Shiprocket Shipment ID — cannot generate label', ERROR_CODES.BAD_REQUEST);
+    const waybill = shipment.delhiveryWaybill || shipment.awbNumber;
+    if (!waybill) {
+      throw new ApiError(400, 'Shipment does not have an AWB / Waybill number yet', ERROR_CODES.BAD_REQUEST);
     }
 
-    const result = await shiprocketProvider.generateLabel(shipment.shiprocketShipmentId);
+    const result = await delhiveryProvider.generateLabel(waybill);
 
     if (result.labelUrl) {
       shipment.labelUrl = result.labelUrl;
       await shipment.save();
     }
 
-    return { labelUrl: shipment.labelUrl, shipment };
+    return { labelUrl: shipment.labelUrl || result.labelUrl, shipment };
   },
 
   // ────────────────────────────────────────────────────────────────────────────
@@ -542,15 +536,15 @@ export const shippingService = {
     const ids = Array.isArray(shipmentIds) ? shipmentIds : [shipmentIds];
     const shipments = await Shipment.find({ _id: { $in: ids } });
 
-    const srShipmentIds = shipments
-      .map((s) => s.shiprocketShipmentId)
+    const waybills = shipments
+      .map((s) => s.delhiveryWaybill || s.awbNumber)
       .filter(Boolean);
 
-    if (srShipmentIds.length === 0) {
-      throw new ApiError(400, 'No valid Shiprocket Shipment IDs found for manifest generation', ERROR_CODES.BAD_REQUEST);
+    if (waybills.length === 0) {
+      throw new ApiError(400, 'No valid Delhivery Waybill numbers found for manifest generation', ERROR_CODES.BAD_REQUEST);
     }
 
-    const result = await shiprocketProvider.generateManifest(srShipmentIds);
+    const result = await delhiveryProvider.generateManifest(waybills);
 
     if (result.manifestUrl) {
       await Shipment.updateMany(
@@ -588,12 +582,14 @@ export const shippingService = {
     const storedEvents = await ShipmentTrackingEvent.find({ shipmentId }).sort({ eventTime: -1 });
 
     let liveTracking = null;
-    if (shipment.awbNumber) {
+    const waybill = shipment.delhiveryWaybill || shipment.awbNumber;
+
+    if (waybill) {
       try {
-        liveTracking = await shiprocketProvider.trackByAWB(shipment.awbNumber);
+        liveTracking = await delhiveryProvider.trackByAWB(waybill);
 
         if (liveTracking?.currentStatus) {
-          const mapped = shiprocketProvider.mapStatus(liveTracking.currentStatus, liveTracking.currentStatusId);
+          const mapped = delhiveryProvider.mapStatus(liveTracking.currentStatus);
           const currentPriority = STATUS_PRIORITY.indexOf(shipment.status);
           const newPriority = STATUS_PRIORITY.indexOf(mapped);
           if (newPriority > currentPriority) {
@@ -604,7 +600,7 @@ export const shippingService = {
           }
         }
       } catch (e) {
-        console.warn('[Shipping] Live tracking query notice:', e.message);
+        console.warn('[Shipping] Delhivery live tracking query notice:', e.message);
       }
     }
 
@@ -616,118 +612,78 @@ export const shippingService = {
   },
 
   // ────────────────────────────────────────────────────────────────────────────
-  // 8. WEBHOOK PROCESSING (Idempotent & Authenticated)
+  // 8. WEBHOOK PROCESSING (Delhivery Callback)
   // ────────────────────────────────────────────────────────────────────────────
 
   async handleWebhook(payload, providedApiKey) {
-    const expectedSecret = env.SHIPROCKET_WEBHOOK_SECRET;
-    if (expectedSecret && expectedSecret !== 'sr_webhook_demo') {
-      if (providedApiKey !== expectedSecret) {
-        console.warn('[Shiprocket Webhook] Invalid x-api-key received');
-        throw new ApiError(401, 'Webhook authentication failed: invalid security token', ERROR_CODES.UNAUTHORIZED);
-      }
+    const expectedSecret = env.DELHIVERY_WEBHOOK_SECRET || env.DELHIVERY_API_KEY;
+    if (expectedSecret && providedApiKey && providedApiKey !== expectedSecret) {
+      console.warn('[Delhivery Webhook] Invalid token received');
+      throw new ApiError(401, 'Webhook authentication failed: invalid security token', ERROR_CODES.UNAUTHORIZED);
     }
 
-    const {
-      awb,
-      courier_name,
-      current_status,
-      current_status_id,
-      shipment_status,
-      shipment_status_id,
-      current_timestamp,
-      order_id,
-      sr_order_id,
-      is_return,
-      scans,
-    } = payload;
+    const waybill = payload.waybill || payload.awb || payload.Shipment?.Waybill || '';
+    const status = payload.status || payload.Status?.Status || payload.current_status || '';
+    const statusLocation = payload.location || payload.Status?.StatusLocation || '';
+    const timestamp = payload.timestamp || payload.Status?.StatusDateTime || new Date().toISOString();
 
-    if (!awb) {
-      console.warn('[Shiprocket Webhook] Missing AWB in webhook payload');
-      return { success: false, reason: 'missing_awb' };
+    if (!waybill) {
+      console.warn('[Delhivery Webhook] Missing Waybill in webhook payload');
+      return { success: false, reason: 'missing_waybill' };
     }
 
     const eventKey = crypto
       .createHash('sha256')
-      .update(`${awb}:${current_status_id || ''}:${current_timestamp || ''}`)
+      .update(`${waybill}:${status}:${timestamp}`)
       .digest('hex');
 
     let webhookEvent;
     try {
-      webhookEvent = await ShiprocketWebhookEvent.create({
+      webhookEvent = await DelhiveryWebhookEvent.create({
         eventKey,
-        awbNumber: awb,
-        shiprocketOrderId: sr_order_id?.toString() || '',
-        channelOrderId: order_id?.toString() || '',
-        courierName: courier_name || '',
-        currentStatus: current_status || '',
-        currentStatusId: parseInt(current_status_id) || null,
-        shipmentStatus: shipment_status || '',
-        shipmentStatusId: parseInt(shipment_status_id) || null,
-        eventTimestamp: current_timestamp || '',
-        isReturn: !!is_return,
-        scansPayload: scans || [],
+        waybill,
+        orderId: payload.order_id || payload.order || '',
+        status,
+        statusType: payload.status_type || '',
+        statusDateTime: String(timestamp),
+        location: statusLocation,
+        instructions: payload.instructions || '',
         rawPayload: payload,
       });
     } catch (e) {
       if (e.code === 11000) {
-        console.log(`[Shiprocket Webhook] Duplicate event for AWB ${awb}, deduplicated.`);
+        console.log(`[Delhivery Webhook] Duplicate event for waybill ${waybill}, deduplicated.`);
         return { success: true, reason: 'duplicate_skipped' };
       }
       throw e;
     }
 
-    const shipment = await Shipment.findOne({ awbNumber: awb });
+    const shipment = await Shipment.findOne({
+      $or: [{ delhiveryWaybill: waybill }, { awbNumber: waybill }]
+    });
+
     if (!shipment) {
-      await ShiprocketWebhookEvent.findByIdAndUpdate(webhookEvent._id, {
+      await DelhiveryWebhookEvent.findByIdAndUpdate(webhookEvent._id, {
         processingStatus: 'SKIPPED',
-        processingError: 'No matching shipment found for AWB',
+        processingError: 'No matching shipment found for waybill',
         processedAt: new Date(),
       });
       return { success: false, reason: 'shipment_not_found' };
     }
 
-    const internalStatus = shiprocketProvider.mapStatus(current_status, current_status_id);
+    const internalStatus = delhiveryProvider.mapStatus(status);
 
     try {
-      if (Array.isArray(scans) && scans.length > 0) {
-        for (const scan of scans) {
-          try {
-            const scanEventId = crypto
-              .createHash('sha256')
-              .update(`${awb}:${scan.date}:${scan.status}`)
-              .digest('hex');
-
-            await ShipmentTrackingEvent.create({
-              shipmentId: shipment._id,
-              provider: 'SHIPROCKET',
-              providerEventId: scanEventId,
-              providerStatus: scan['sr-status-label'] || scan.status || current_status,
-              internalStatus: shiprocketProvider.mapStatus(scan['sr-status-label'] || scan.status, scan['sr-status']),
-              location: scan.location || '',
-              description: scan.activity || '',
-              eventTime: scan.date ? new Date(scan.date) : new Date(),
-            });
-          } catch (dupErr) {
-            if (dupErr.code !== 11000) console.warn('[Webhook Scan] Insert error:', dupErr.message);
-          }
-        }
-      } else {
-        try {
-          await ShipmentTrackingEvent.create({
-            shipmentId: shipment._id,
-            provider: 'SHIPROCKET',
-            providerEventId: eventKey,
-            providerStatus: current_status || shipment_status,
-            internalStatus,
-            location: '',
-            description: current_status || '',
-            eventTime: current_timestamp ? new Date(current_timestamp) : new Date(),
-          });
-        } catch (dupErr) {
-          if (dupErr.code !== 11000) console.warn('[Webhook Fallback] Event insert error:', dupErr.message);
-        }
-      }
+      await ShipmentTrackingEvent.create({
+        shipmentId: shipment._id,
+        provider: 'DELHIVERY',
+        providerEventId: eventKey,
+        providerStatus: status,
+        internalStatus,
+        location: statusLocation,
+        description: payload.instructions || `Status update from Delhivery: ${status}`,
+        eventTime: new Date(timestamp),
+      }).catch(() => {});
 
       // Non-regressive state progression
       const currentPriority = STATUS_PRIORITY.indexOf(shipment.status);
@@ -755,7 +711,7 @@ export const shippingService = {
         }
       }
 
-      await ShiprocketWebhookEvent.findByIdAndUpdate(webhookEvent._id, {
+      await DelhiveryWebhookEvent.findByIdAndUpdate(webhookEvent._id, {
         processingStatus: 'PROCESSED',
         processedAt: new Date(),
         shipmentId: shipment._id,
@@ -763,12 +719,12 @@ export const shippingService = {
 
       return { success: true };
     } catch (error) {
-      await ShiprocketWebhookEvent.findByIdAndUpdate(webhookEvent._id, {
+      await DelhiveryWebhookEvent.findByIdAndUpdate(webhookEvent._id, {
         processingStatus: 'FAILED',
         processingError: error.message,
         processedAt: new Date(),
       });
-      console.error('[Shiprocket Webhook] Processing error:', error);
+      console.error('[Delhivery Webhook] Processing error:', error);
       throw error;
     }
   },
@@ -824,11 +780,12 @@ export const shippingService = {
       );
     }
 
-    if (shipment.shiprocketOrderId) {
+    const waybill = shipment.delhiveryWaybill || shipment.awbNumber;
+    if (waybill) {
       try {
-        await shiprocketProvider.cancelOrder([shipment.shiprocketOrderId]);
+        await delhiveryProvider.cancelShipment(waybill);
       } catch (e) {
-        console.warn('[Shipping] Shiprocket cancellation API notice:', e.message);
+        console.warn('[Shipping] Delhivery cancellation notice:', e.message);
       }
     }
 
@@ -863,36 +820,18 @@ export const shippingService = {
       throw new ApiError(400, 'A return shipment already exists for this shipment', ERROR_CODES.BAD_REQUEST);
     }
 
-    const result = await shiprocketProvider.createReturnOrder({
-      order_id: shipment.shiprocketOrderId,
-      order_date: new Date().toISOString().split('T')[0],
-      channel_id: '',
-      pickup_customer_name: returnPayload.pickupName || 'Customer',
-      pickup_phone: returnPayload.pickupPhone || '',
-      pickup_address: returnPayload.pickupAddress || shipment.destinationAddressSnapshot?.streetAddress || '',
-      pickup_city: returnPayload.pickupCity || shipment.destinationAddressSnapshot?.city || '',
-      pickup_state: returnPayload.pickupState || shipment.destinationAddressSnapshot?.state || '',
-      pickup_country: 'India',
-      pickup_pincode: returnPayload.pickupPincode || shipment.destinationAddressSnapshot?.postalCode || '',
-      pickup_email: returnPayload.pickupEmail || '',
-      shipping_customer_name: shipment.originAddressSnapshot?.contactName || 'Vendor',
-      shipping_phone: shipment.originAddressSnapshot?.phone || '',
-      shipping_address: shipment.originAddressSnapshot?.addressLine1 || '',
-      shipping_city: shipment.originAddressSnapshot?.district?.name || shipment.originAddressSnapshot?.cityName || '',
-      shipping_state: shipment.originAddressSnapshot?.state?.name || shipment.originAddressSnapshot?.stateName || '',
-      shipping_country: 'India',
-      shipping_pincode: shipment.originAddressSnapshot?.pincode || '',
-      order_items: returnPayload.items || [],
-      payment_method: 'Prepaid',
-      sub_total: returnPayload.subTotal || 0,
-      length: shipment.length,
-      breadth: shipment.width,
-      height: shipment.height,
-      weight: shipment.packageWeight,
+    const result = await delhiveryProvider.createReturnOrder({
+      originalWaybill: shipment.delhiveryWaybill || shipment.awbNumber,
+      orderNumber: shipment.courierOrderId,
+      pickupCustomerName: returnPayload.pickupName || 'Customer',
+      pickupPhone: returnPayload.pickupPhone || '',
+      pickupAddress: returnPayload.pickupAddress || shipment.destinationAddressSnapshot?.streetAddress || '',
+      pickupPincode: returnPayload.pickupPincode || shipment.destinationAddressSnapshot?.postalCode || '',
     });
 
     if (result.success) {
-      shipment.returnShipmentId = result.returnOrderId?.toString() || result.returnShipmentId?.toString();
+      shipment.returnShipmentId = result.returnWaybill || result.returnOrderId;
+      shipment.returnAwbNumber = result.returnWaybill;
       shipment.status = 'RETURN_INITIATED';
       await shipment.save();
     }
@@ -916,7 +855,12 @@ export const shippingService = {
         query.status = filters.status;
       }
     }
-    if (filters.awbNumber) query.awbNumber = { $regex: filters.awbNumber, $options: 'i' };
+    if (filters.awbNumber) {
+      query.$or = [
+        { awbNumber: { $regex: filters.awbNumber, $options: 'i' } },
+        { delhiveryWaybill: { $regex: filters.awbNumber, $options: 'i' } },
+      ];
+    }
     if (filters.courierName) query.courierName = { $regex: filters.courierName, $options: 'i' };
     if (filters.dateFrom || filters.dateTo) {
       query.createdAt = {};

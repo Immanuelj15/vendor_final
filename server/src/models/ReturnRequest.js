@@ -138,6 +138,7 @@ const returnRequestSchema = new mongoose.Schema(
       completedAt: { type: Date, default: null },
       status: { type: String, default: 'PENDING' },
       trackingUrl: { type: String, default: '' },
+      delhiveryReturnWaybill: { type: String, default: '' },
       shiprocketReturnShipmentId: { type: String, default: '' },
       pickupAddress: { type: mongoose.Schema.Types.Mixed, default: null },
     },

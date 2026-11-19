@@ -105,7 +105,7 @@ export const VendorShipping = () => {
 
       const res = await api.post(`/shipping/vendor/shipments/${shipmentId}/awb`, payload);
       const awb = res.data?.data?.shipment?.awbNumber || 'Assigned';
-      const courierName = res.data?.data?.shipment?.courierName || 'Shiprocket Partner';
+      const courierName = res.data?.data?.shipment?.courierName || 'Delhivery Express';
       setActionSuccess(`AWB generated successfully! Courier: ${courierName}, AWB: ${awb}`);
       await fetchShipments();
     } catch (err) {
@@ -137,7 +137,7 @@ export const VendorShipping = () => {
       if (labelUrl) {
         window.open(labelUrl, '_blank');
       } else {
-        alert('Shipping label is being compiled by Shiprocket. Please try again in a few moments.');
+        alert('Shipping label is being compiled by Delhivery. Please try again in a few moments.');
       }
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to generate shipping label');
@@ -182,14 +182,14 @@ export const VendorShipping = () => {
     fetchPickupAddresses();
   };
 
-  const handleRegisterAddressWithShiprocket = async (addressId) => {
+  const handleRegisterAddressWithDelhivery = async (addressId) => {
     try {
       setAddressSubmitting(true);
       await api.post(`/shipping/vendor/addresses/${addressId}/register`);
-      setActionSuccess('Pickup location successfully registered and verified with Shiprocket!');
+      setActionSuccess('Pickup location successfully registered and verified with Delhivery!');
       await fetchPickupAddresses();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to register with Shiprocket');
+      alert(err.response?.data?.message || 'Failed to register with Delhivery');
     } finally {
       setAddressSubmitting(false);
     }
@@ -218,7 +218,7 @@ export const VendorShipping = () => {
         isDefault: true,
       });
       await fetchPickupAddresses();
-      setActionSuccess('Pickup address created and submitted to Shiprocket!');
+      setActionSuccess('Pickup address created and submitted to Delhivery!');
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to create pickup address');
     } finally {
@@ -259,7 +259,7 @@ export const VendorShipping = () => {
             <span>Shipping & Logistics</span>
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Official Shiprocket carrier integration for automated dispatch, label printing, and real-time tracking
+            Official Delhivery carrier integration for automated dispatch, label printing, and real-time tracking
           </p>
         </div>
         <div className="flex items-center gap-2.5">
@@ -350,7 +350,7 @@ export const VendorShipping = () => {
       {loading ? (
         <div className="p-16 flex flex-col items-center justify-center gap-3 bg-white border border-slate-200/80 rounded-3xl shadow-xs">
           <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
-          <p className="text-slate-500 text-xs font-bold">Connecting with Shiprocket servers...</p>
+          <p className="text-slate-500 text-xs font-bold">Connecting with Delhivery servers...</p>
         </div>
       ) : shipments.length === 0 ? (
         <div className="p-16 text-center bg-white border border-slate-200/80 rounded-3xl shadow-xs space-y-3">
@@ -375,7 +375,7 @@ export const VendorShipping = () => {
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-xs font-bold text-slate-900">
-                        Shipment #{shipment.shiprocketShipmentId || shipment.courierOrderId || shipment._id.slice(-8).toUpperCase()}
+                        Shipment #{shipment.delhiveryWaybill || shipment.awbNumber || shipment.courierOrderId || shipment._id.slice(-8).toUpperCase()}
                       </span>
                       {getStatusBadge(shipment.status)}
                     </div>
@@ -505,7 +505,7 @@ export const VendorShipping = () => {
                   <Truck className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-black text-slate-900">Select Shiprocket Courier Partner</h3>
+                  <h3 className="text-base font-black text-slate-900">Select Delhivery Express Courier Service</h3>
                   <p className="text-xs text-slate-500">Compare rates, delivery speeds, and tracking ratings</p>
                 </div>
               </div>
@@ -521,7 +521,7 @@ export const VendorShipping = () => {
               {loadingCouriers ? (
                 <div className="py-12 flex flex-col items-center justify-center gap-3 text-slate-500">
                   <Loader2 className="w-7 h-7 animate-spin text-indigo-600" />
-                  <p className="text-xs font-bold">Querying Shiprocket for available couriers on this route...</p>
+                  <p className="text-xs font-bold">Querying Delhivery for available services on this route...</p>
                 </div>
               ) : courierFetchError ? (
                 <div className="space-y-4">
@@ -533,7 +533,7 @@ export const VendorShipping = () => {
                     onClick={() => handleAssignAWB(courierModalShipment._id, null)}
                     className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors"
                   >
-                    Auto-assign Primary Shiprocket Courier
+                    Auto-assign Primary Delhivery Service
                   </button>
                 </div>
               ) : availableCouriers.length === 0 ? (
@@ -616,7 +616,7 @@ export const VendorShipping = () => {
                   <MapPin className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-black text-slate-900">Shiprocket Pickup Locations</h3>
+                  <h3 className="text-base font-black text-slate-900">Delhivery Warehouse Locations</h3>
                   <p className="text-xs text-slate-500">Manage warehouse addresses where couriers pick up orders</p>
                 </div>
               </div>
@@ -666,18 +666,18 @@ export const VendorShipping = () => {
                                 </span>
                               )}
                             </div>
-                            {addr.shiprocketRegistrationStatus === 'REGISTERED' ? (
+                            {(addr.delhiveryRegistrationStatus === 'REGISTERED' || addr.shiprocketRegistrationStatus === 'REGISTERED') ? (
                               <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
                                 <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                                Verified Shiprocket
+                                Verified Delhivery
                               </span>
                             ) : (
                               <button
-                                onClick={() => handleRegisterAddressWithShiprocket(addr._id)}
+                                onClick={() => handleRegisterAddressWithDelhivery(addr._id)}
                                 disabled={addressSubmitting}
                                 className="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold"
                               >
-                                {addressSubmitting ? 'Registering...' : 'Register in Shiprocket'}
+                                {addressSubmitting ? 'Registering...' : 'Register in Delhivery'}
                               </button>
                             )}
                           </div>
@@ -686,8 +686,8 @@ export const VendorShipping = () => {
                             {addr.cityName || addr.city || ''}, {addr.stateName || ''} - PIN {addr.pincode}
                           </p>
                           <p className="text-[11px] text-slate-500">Contact: {addr.contactName} ({addr.phone})</p>
-                          {addr.shiprocketPickupName && (
-                            <p className="text-[11px] font-mono text-indigo-600">Shiprocket Location Code: {addr.shiprocketPickupName}</p>
+                          {(addr.delhiveryPickupName || addr.shiprocketPickupName) && (
+                            <p className="text-[11px] font-mono text-indigo-600">Delhivery Warehouse Code: {addr.delhiveryPickupName || addr.shiprocketPickupName}</p>
                           )}
                         </div>
                       ))}

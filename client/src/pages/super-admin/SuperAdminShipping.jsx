@@ -17,7 +17,7 @@ const TABS = [
   { id: 'cancelled', label: 'Cancelled', icon: XCircle },
   { id: 'returns', label: 'Return Requests', icon: RotateCcw },
   { id: 'refunds', label: 'Refund Management', icon: DollarSign },
-  { id: 'exceptions', label: 'Shiprocket API Logs', icon: ShieldAlert },
+  { id: 'exceptions', label: 'Delhivery API Logs', icon: ShieldAlert },
 ];
 
 export const SuperAdminShipping = () => {
@@ -41,7 +41,7 @@ export const SuperAdminShipping = () => {
   const [actionSuccess, setActionSuccess] = useState(null);
   const [actionError, setActionError] = useState(null);
 
-  // Shiprocket API Connection Health State
+  // Delhivery API Connection Health State
   const [connectionStatus, setConnectionStatus] = useState(null);
   const [checkingConnection, setCheckingConnection] = useState(false);
 
@@ -269,7 +269,7 @@ export const SuperAdminShipping = () => {
             <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-500/20">
               <Truck className="w-5 h-5" />
             </div>
-            <span>Logistics & Shiprocket Hub</span>
+            <span>Logistics & Delhivery Hub</span>
           </h1>
           <p className="text-sm text-slate-500 mt-1">
             Platform-wide multi-vendor shipping orchestration, AWB assignment, carrier tracking & manifests
@@ -290,7 +290,7 @@ export const SuperAdminShipping = () => {
             onClick={handleCheckConnection}
             disabled={checkingConnection}
             className="px-3.5 py-2.5 bg-white hover:bg-slate-50 text-slate-700 rounded-xl border border-slate-200 shadow-xs text-xs font-bold transition-colors flex items-center gap-1.5"
-            title="Check Shiprocket API Health"
+            title="Check Delhivery API Health"
           >
             {checkingConnection ? <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-600" /> : <ShieldCheck className="w-3.5 h-3.5 text-indigo-600" />}
             <span>Test API</span>
@@ -325,12 +325,12 @@ export const SuperAdminShipping = () => {
             {connectionStatus.connected ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <AlertCircle className="w-4 h-4 text-rose-600" />}
             <div>
               <span className="font-bold">
-                Shiprocket API Status: {connectionStatus.connected ? 'Connected & Verified' : 'Connection Failed'}
+                Delhivery API Status: {connectionStatus.connected ? 'Connected & Verified' : 'Connection Failed'}
               </span>
               <p className="mt-0.5 text-[11px] opacity-90">
                 {connectionStatus.connected
-                  ? `Authenticated successfully with Shiprocket API v2. Registered pickup locations: ${connectionStatus.registeredPickupLocationsCount}`
-                  : `Error: ${connectionStatus.error || 'Could not verify API credentials. Please check SHIPROCKET_EMAIL and SHIPROCKET_PASSWORD in server/.env'}`}
+                  ? `Authenticated successfully with Delhivery Logistics API. API Token verified.`
+                  : `Error: ${connectionStatus.error || 'Could not verify API credentials. Please check DELHIVERY_API_KEY in server/.env'}`}
               </p>
             </div>
           </div>
@@ -707,7 +707,7 @@ export const SuperAdminShipping = () => {
           </div>
         )}
 
-        {/* Tab Content: Shiprocket API Logs */}
+        {/* Tab Content: Delhivery API Logs */}
         {activeTab === 'exceptions' && (
           <div className="overflow-x-auto">
             {loading ? (
@@ -729,7 +729,7 @@ export const SuperAdminShipping = () => {
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="font-mono font-bold text-rose-900 uppercase">
-                          {exc.errorCode || exc.exceptionType || 'SHIPROCKET_API_ERROR'}
+                          {exc.errorCode || exc.exceptionType || 'DELHIVERY_API_ERROR'}
                         </span>
                         <span className="text-[11px] text-slate-400">
                           {new Date(exc.createdAt).toLocaleString()}

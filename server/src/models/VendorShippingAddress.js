@@ -1,10 +1,5 @@
 /**
- * VendorShippingAddress model — Extended for Shiprocket Integration
- *
- * Adds shiprocketPickupName and shiprocketRegistrationStatus fields
- * to track Shiprocket pickup location registration per address.
- *
- * Preserves all existing fields.
+ * VendorShippingAddress model — Extended for Delhivery Logistics Integration
  */
 
 import mongoose from 'mongoose';
@@ -30,18 +25,33 @@ const vendorShippingAddressSchema = new mongoose.Schema(
     country: { type: String, default: 'India' },
     isDefault: { type: Boolean, default: false },
     status: { type: String, enum: ['ACTIVE', 'INACTIVE'], default: 'ACTIVE' },
-    // ── Shiprocket Integration Fields ────────────────────────────────────────
-    shiprocketPickupName: {
+
+    // ── Delhivery Logistics Fields ───────────────────────────────────────────
+    delhiveryPickupName: {
       type: String,
       default: null,
       index: true,
-      comment: 'The unique pickup location name registered in Shiprocket account',
+    },
+    delhiveryRegistrationStatus: {
+      type: String,
+      enum: ['UNREGISTERED', 'PENDING', 'REGISTERED', 'FAILED'],
+      default: 'UNREGISTERED',
+      index: true,
+    },
+    delhiveryRegisteredAt: {
+      type: Date,
+      default: null,
+    },
+
+    // ── Backward-compatible aliases ──────────────────────────────────────────
+    shiprocketPickupName: {
+      type: String,
+      default: null,
     },
     shiprocketRegistrationStatus: {
       type: String,
       enum: ['UNREGISTERED', 'PENDING', 'REGISTERED', 'FAILED'],
       default: 'UNREGISTERED',
-      index: true,
     },
     shiprocketRegisteredAt: {
       type: Date,

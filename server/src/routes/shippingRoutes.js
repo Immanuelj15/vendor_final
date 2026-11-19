@@ -1,5 +1,5 @@
 /**
- * Shipping Routes — Production Shiprocket Integration
+ * Shipping Routes — Delhivery Logistics Integration
  */
 
 import express from 'express';
@@ -31,11 +31,13 @@ import {
   adminCancelShipment,
   adminRetryShipment,
   adminGetShippingExceptions,
+  checkDelhiveryConnection,
   checkShiprocketConnection,
   // Cancellation & Returns
   cancelShipment,
   createReturnShipment,
-  // Webhook
+  // Webhooks
+  handleDelhiveryWebhook,
   handleShiprocketWebhook,
 } from '../controllers/shippingController.js';
 
@@ -43,8 +45,9 @@ import { authenticate, authorize } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// ─── Webhook (PUBLIC — Shiprocket authenticates via x-api-key header) ──────────
-router.post('/webhook/shiprocket', handleShiprocketWebhook);
+// ─── Webhooks (PUBLIC — Delhivery callback) ──────────────────────────────────
+router.post('/webhook/delhivery', handleDelhiveryWebhook);
+router.post('/webhook/shiprocket', handleShiprocketWebhook); // Backwards compatibility
 
 // ─── Public Serviceability Check (for checkout page) ─────────────────────────
 router.get('/serviceability', publicServiceabilityCheck);
@@ -78,7 +81,7 @@ router.get('/customer/orders/:orderId/shipments', authorize('CUSTOMER', 'VENDOR'
 router.get('/customer/shipments/:id/tracking', authorize('CUSTOMER', 'VENDOR', 'ADMIN', 'SUPER_ADMIN'), getShipmentTracking);
 
 // ─── SUPER ADMIN: Full Shipping Management ────────────────────────────────────
-router.get('/admin/connection-status', authorize('SUPER_ADMIN'), checkShiprocketConnection);
+router.get('/admin/connection-status', authorize('SUPER_ADMIN'), checkDelhiveryConnection);
 router.get('/admin/stats', authorize('SUPER_ADMIN'), adminGetShippingStats);
 router.get('/admin/shipments', authorize('SUPER_ADMIN'), adminGetShipments);
 router.post('/admin/shipments', authorize('SUPER_ADMIN'), adminCreateShipment);

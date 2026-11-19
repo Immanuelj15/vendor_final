@@ -1,8 +1,5 @@
 /**
- * Shipment model — Extended for Shiprocket Integration
- *
- * Adds full Shiprocket tracking fields to the existing Shipment schema.
- * All existing fields are preserved.
+ * Shipment model — Delhivery Logistics Integration
  */
 
 import mongoose from 'mongoose';
@@ -31,18 +28,19 @@ const shipmentSchema = new mongoose.Schema(
     },
 
     // ── Courier Info ──────────────────────────────────────────────────────────
-    courierProvider: { type: String, default: 'SHIPROCKET' },
-    courierService: { type: String, default: '' },
-    courierCompanyId: { type: Number, default: null },  // Shiprocket courier_company_id
-    courierName: { type: String, default: '' },         // Actual courier name (e.g., Delhivery)
-    courierOrderId: { type: String, default: '' },      // Our order_id sent to Shiprocket
+    courierProvider: { type: String, default: 'DELHIVERY' },
+    courierService: { type: String, default: 'Delhivery Surface Express' },
+    courierCompanyId: { type: Number, default: 101 },  // Delhivery Courier Company ID
+    courierName: { type: String, default: 'Delhivery Express' }, // Courier Partner Name
+    courierOrderId: { type: String, default: '' },      // Order reference sent to Delhivery
 
-    // ── Shiprocket References ─────────────────────────────────────────────────
-    shiprocketOrderId: { type: Number, default: null },    // SR's internal order ID
-    shiprocketShipmentId: { type: Number, default: null }, // SR's shipment ID
+    // ── Delhivery & Logistics References ──────────────────────────────────────
+    delhiveryWaybill: { type: String, default: '', index: true },
+    shiprocketOrderId: { type: mongoose.Schema.Types.Mixed, default: null }, // Compatibility
+    shiprocketShipmentId: { type: mongoose.Schema.Types.Mixed, default: null },
 
     // ── AWB & Tracking ────────────────────────────────────────────────────────
-    awbNumber: { type: String, default: '' },
+    awbNumber: { type: String, default: '', index: true },
     trackingUrl: { type: String, default: '' },
     labelUrl: { type: String, default: '' },
     manifestUrl: { type: String, default: '' },
@@ -50,7 +48,7 @@ const shipmentSchema = new mongoose.Schema(
     // ── Address Snapshots ─────────────────────────────────────────────────────
     originAddressSnapshot: { type: Object, required: true },
     destinationAddressSnapshot: { type: Object, required: true },
-    pickupLocationName: { type: String, default: '' },  // Shiprocket pickup location name
+    pickupLocationName: { type: String, default: '' },
 
     // ── Package Dimensions ────────────────────────────────────────────────────
     packageWeight: { type: Number, required: true },   // kg
@@ -71,8 +69,8 @@ const shipmentSchema = new mongoose.Schema(
         'DRAFT',
         'READY',
         'ORDER_CREATED',
-        'CREATED',              // Order created in Shiprocket
-        'AWB_ASSIGNED',         // AWB number assigned
+        'CREATED',              // Shipment created in Delhivery
+        'AWB_ASSIGNED',         // Waybill number assigned
         'PICKUP_REQUESTED',
         'PICKUP_SCHEDULED',
         'PICKUP_FAILED',
@@ -98,6 +96,7 @@ const shipmentSchema = new mongoose.Schema(
     },
 
     // ── Idempotency ────────────────────────────────────────────────────────────
+    creationAttempts: { type: Number, default: 0 },
     shiprocketCreationAttempts: { type: Number, default: 0 },
     lastCreationAttemptAt: { type: Date, default: null },
 
@@ -110,15 +109,15 @@ const shipmentSchema = new mongoose.Schema(
     cancellationReason: { type: String, default: '' },
 
     // ── Return Shipment Reference ─────────────────────────────────────────────
-    returnShipmentId: { type: String, default: null },   // Shiprocket return order ID
+    returnShipmentId: { type: String, default: null },
     returnAwbNumber: { type: String, default: '' },
   },
   { timestamps: true }
 );
 
-// Compound index to prevent duplicate AWB assignments
+// Indexes
 shipmentSchema.index({ awbNumber: 1 }, { sparse: true });
-shipmentSchema.index({ shiprocketOrderId: 1 }, { sparse: true });
+shipmentSchema.index({ delhiveryWaybill: 1 }, { sparse: true });
 
 export const Shipment = mongoose.model('Shipment', shipmentSchema);
 export default Shipment;

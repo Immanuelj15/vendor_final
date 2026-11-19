@@ -474,8 +474,8 @@ export const returnService = {
     if (schedulePickup) {
       returnRequest.pickupDetails.status = 'SCHEDULED';
       returnRequest.pickupDetails.scheduledDate = new Date(Date.now() + 24 * 60 * 60 * 1000); // Tomorrow
-      returnRequest.pickupDetails.courierPartner = 'Shiprocket Reverse Logistics';
-      returnRequest.pickupDetails.awbNumber = `SR-REV-${Math.floor(10000000 + Math.random() * 90000000)}`;
+      returnRequest.pickupDetails.courierPartner = 'Delhivery Reverse Logistics';
+      returnRequest.pickupDetails.awbNumber = `DLV-REV-${Math.floor(10000000 + Math.random() * 90000000)}`;
     }
 
     returnRequest.actionHistory.push({
