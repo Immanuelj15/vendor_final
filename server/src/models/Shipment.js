@@ -115,9 +115,5 @@ const shipmentSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Indexes
-shipmentSchema.index({ awbNumber: 1 }, { sparse: true });
-shipmentSchema.index({ delhiveryWaybill: 1 }, { sparse: true });
-
 export const Shipment = mongoose.model('Shipment', shipmentSchema);
 export default Shipment;
